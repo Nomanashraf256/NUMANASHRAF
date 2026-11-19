@@ -1,0 +1,263 @@
+:root {
+  font: 16px/1.5 system-ui,sans-serif;
+  color: #162b2a;
+  background: #f2f6f3;
+  --green: #14664f;
+  --muted: #48645d;
+  --line: #ceddd6;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+[hidden] {
+  display: none!important;
+}
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 14px max(14px,calc((100% - 960px)/2));
+  background: white;
+  border-bottom: 1px solid var(--line);
+}
+.top b {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  line-height: 1.2;
+}
+.mark {
+  display: grid;
+  place-items: center;
+  color: white;
+  background: var(--green);
+  border-radius: 12px;
+  font-size: 24px;
+  width: 36px;
+  height: 36px;
+  flex: none;
+}
+.hero {
+  width: 63px;
+  height: 63px;
+  font-size: 39px;
+  border-radius: 21px;
+}
+main {
+  width: min(1000px,100%);
+  margin: auto;
+  padding: clamp(12px,3vw,28px);
+  flex: 1;
+}
+#lobby {
+  max-width: 495px;
+  margin: clamp(14px,8vh,80px) auto 0;
+}
+h1 {
+  font-size: clamp(2.4rem,6vw,3.65rem);
+  line-height: 1.03;
+  letter-spacing: -.06em;
+  margin: 20px 0 12px;
+}
+#lobby p {
+  color: var(--muted);
+  font-size: 1.08rem;
+  margin: 0 0 23px;
+}
+.entry,#room {
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 21px;
+  box-shadow: 0 12px 40px #193d2910;
+}
+.entry {
+  padding: 20px;
+}
+.entry>.primary {
+  width: 100%;
+}
+#join {
+  margin-top: 19px;
+}
+#join label {
+  display: block;
+  font-weight: 650;
+  margin-bottom: 7px;
+}
+.row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+button,select,input {
+  font: inherit;
+  border-radius: 10px;
+  min-height: 44px;
+  border: 1px solid var(--line);
+  padding: 8px 11px;
+  color: inherit;
+  background: white;
+}
+button {
+  cursor: pointer;
+  font-weight: 650;
+  white-space: nowrap;
+}
+button:hover:not(:disabled) {
+  filter: brightness(.95);
+}
+button:disabled {
+  opacity: .52;
+  cursor: default;
+}
+.primary {
+  background: var(--green);
+  color: white;
+  border-color: var(--green);
+}
+.danger {
+  color: #a22335;
+  border-color: #ebc6ca;
+}
+input {
+  flex: 1;
+  min-width: 0;
+}
+:focus-visible {
+  outline: 3px solid #3c9a80;
+  outline-offset: 2px;
+}
+#room {
+  overflow: hidden;
+}
+.room-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 9px;
+  flex-wrap: wrap;
+  padding: 12px 14px;
+}
+.room-head h2 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+#presence,#callNotice,#recordStatus {
+  color: var(--muted);
+  font-size: .89rem;
+  margin: 0;
+}
+#notice {
+  margin: 7px 0;
+  color: #873344;
+  text-align: center;
+}
+#messages {
+  height: clamp(135px,43dvh,480px);
+  overflow: auto;
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: #fbfdfa;
+  border-top: 1px solid var(--line);
+}
+.bubble {
+  max-width: 87%;
+  align-self: flex-start;
+  background: #eef2ef;
+  border-radius: 15px 15px 15px 4px;
+  padding: 9px 13px;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.mine {
+  align-self: flex-end;
+  background: #dff0e8;
+  border-radius: 15px 15px 4px 15px;
+}
+.bubble small,.bubble summary {
+  color: var(--muted);
+  font-size: .83rem;
+}
+.bubble audio {
+  display: block;
+  width: min(245px,60vw);
+  margin-top: 6px;
+}
+.bubble button {
+  margin: 5px 5px 0 0;
+}
+.empty {
+  margin: auto;
+  color: var(--muted);
+  text-align: center;
+}
+.composer {
+  border-top: 1px solid var(--line);
+  padding: 10px;
+}
+#callPanel {
+  background: #e5f2ea;
+  border-top: 1px solid var(--line);
+}
+#callTools {
+  padding: 0 14px 9px;
+}
+.options {
+  flex-wrap: wrap;
+}
+.options label {
+  display: grid;
+  font-size: .81rem;
+}
+#captions {
+  max-height: 105px;
+  overflow: auto;
+  overflow-wrap: anywhere;
+}
+#captions p {
+  margin: 2px 0;
+}
+#recordStatus:not(:empty) {
+  padding-bottom: 7px;
+}
+footer {
+  text-align: center;
+  padding: 5px 10px 12px;
+  color: var(--muted);
+  font-size: .85rem;
+}
+@media(max-width:460px) {
+  .top select {
+    max-width: 54%;
+    padding: 6px;
+  }
+  .room-head .row {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+  .room-head .row button {
+    flex: 1;
+  }
+  #messages {
+    height: clamp(115px,31dvh,400px);
+  }
+  #compose {
+    flex-wrap: wrap;
+  }
+  #compose input {
+    order: -1;
+    flex-basis: 100%;
+  }
+  #compose button {
+    flex: 1;
+  }
+}

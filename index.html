@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>English–Turkish Connect</title>
+<link rel="stylesheet" href="/assets/style.css">
+<script type="module" src="/assets/app.js">
+</script>
+</head>
+<body>
+<header class="top">
+<b>
+<span class="mark">↔</span> English–Turkish Connect</b>
+<select id="locale" aria-label="Language">
+<option value="en">I speak English</option>
+<option value="tr">Türkçe konuşuyorum</option>
+</select>
+</header>
+<main>
+<section id="lobby">
+<span class="mark hero">↔</span>
+<h1 data-t="title">
+</h1>
+<p data-t="intro">
+</p>
+<div class="entry">
+<button class="primary" id="create" data-t="create">
+</button>
+<form id="join">
+<label for="code" data-t="inviteLabel">
+</label>
+<div class="row">
+<input id="code" required maxlength="500" autocomplete="off" autocapitalize="off" spellcheck="false">
+<button data-t="join">
+</button>
+</div>
+</form>
+</div>
+</section>
+<section id="room" hidden>
+<header class="room-head">
+<div>
+<h2 data-t="room">
+</h2>
+<p id="presence">
+</p>
+</div>
+<div class="row">
+<button id="copy" data-t="copy">
+</button>
+<button id="leave" data-t="leave">
+</button>
+<button id="call" class="primary" data-t="call">
+</button>
+</div>
+</header>
+<div id="callPanel" hidden>
+<div class="room-head">
+<div>
+<strong id="callState">
+</strong>
+<p id="callNotice" role="status">
+</p>
+</div>
+<div class="row">
+<button id="accept" class="primary" data-t="accept">
+</button>
+<button id="decline" class="danger" data-t="decline">
+</button>
+<button id="mute" data-t="mute">
+</button>
+<button id="end" class="danger" data-t="end">
+</button>
+</div>
+</div>
+<div id="callTools" hidden>
+<div class="row options">
+<label>
+<span data-t="listenMode">
+</span>
+<select id="hear">
+<option value="translated" data-t="translated">
+</option>
+<option value="original" data-t="original">
+</option>
+<option value="both" data-t="both">
+</option>
+</select>
+</label>
+<label>
+<span data-t="captureMode">
+</span>
+<select id="capture">
+<option value="auto" data-t="auto">
+</option>
+<option value="push" data-t="push">
+</option>
+</select>
+</label>
+<button id="phrase" class="primary" hidden>
+</button>
+</div>
+<div id="captions" role="log">
+</div>
+</div>
+</div>
+<div id="messages" role="log">
+</div>
+<div class="composer">
+<p id="recordStatus" role="status">
+</p>
+<form class="row" id="compose">
+<button id="mic" type="button" data-t="record">
+</button>
+<input id="draft" maxlength="1500" autocomplete="off">
+<button class="primary" id="send" data-t="send">
+</button>
+</form>
+</div>
+</section>
+<p id="notice" role="status">
+</p>
+</main>
+<footer data-t="footer">
+</footer>
+<audio id="peerAudio" autoplay playsinline>
+</audio>
+<audio id="spokenAudio" playsinline>
+</audio>
+</body>
+</html>
