@@ -69,7 +69,7 @@ class Models:
     def translate(self, source, phrase):
         # Preserve emoji-only messages and isolate common emoji sequences from the model.
         emoji_pattern = r"([\U0001F1E6-\U0001FAFF\u2600-\u27BF][\U0001F1E6-\U0001FAFF\u2600-\u27BF\ufe0f\u200d]*)"
-        segments = re.split(emoji_pattern, phrase)
+        segments = re.split(r"(https?://[^\s<>]+|" + emoji_pattern[1:-1] + ")", phrase)
         if len(segments) == 1:
             return self.translate_text(source, phrase)
         translated = []
@@ -252,6 +252,22 @@ async def socket(request):
             if kind == "language" and data.get("lang") in LANGS:
                 member["lang"] = data["lang"]
                 await presence(room)
+            if kind in {"reaction", "correction"}:
+                key = data.get("key")
+                item = room["messages"].get(key) if isinstance(key, str) else None
+                value = data.get("value")
+                if item and item["kind"] != "phrase" and isinstance(value, str):
+                    if kind == "reaction" and value in {"👍", "❤️", "😂", "🙌"}:
+                        reactions = item.setdefault("reactions", {})
+                        if reactions.get(member["id"]) == value:
+                            reactions.pop(member["id"])
+                        else:
+                            reactions[member["id"]] = value
+                    elif kind == "correction" and 0 < len(value.strip()) <= 300:
+                        item["correction"] = value.strip()
+                    else:
+                        continue
+                    await cast(room, {"type": "message", "message": clean_message(item)})
             if kind == "typing":
                 await cast(room, {"type": "typing", "active": data.get("active") is True}, token)
             if kind == "preview":
@@ -280,6 +296,7 @@ async def socket(request):
                 await cast(room, {"type": "call", "call": room["call"]})
             if kind == "accept" and call and call["state"] == "ringing" and call["caller"] != member["id"]:
                 call["state"] = "active"
+                call["started"] = int(time.time() * 1000)
                 await cast(room, {"type": "call", "call": call})
             if kind == "hangup" and call:
                 room["call"] = None
@@ -343,6 +360,10 @@ async def handle_message(app, room, member, ws, kind, data):
                    "kind": kind, "original": original.strip(), "audio": audio, "mime": mime,
                    "call": call["id"] if kind == "phrase" else None, "translated": "",
                    "time": int(time.time() * 1000)}
+        reply_key = data.get("reply")
+        replied = room["messages"].get(reply_key) if isinstance(reply_key, str) else None
+        if kind == "text" and replied and replied["kind"] != "phrase":
+            message["reply"] = {field: replied[field][:160] for field in ("original", "translated", "lang")}
         room["messages"][key] = message
     message.update(status="pending", busy=True)
     await cast(room, {"type": "message", "message": clean_message(message)})
@@ -394,7 +415,7 @@ async def headers(request, handler):
         response.headers.update({
             "Referrer-Policy": "no-referrer", "X-Content-Type-Options": "nosniff",
             "Permissions-Policy": "microphone=(self)", "Cache-Control": "no-store",
-            "Content-Security-Policy": "default-src 'self'; media-src 'self' blob: data:; frame-ancestors 'none'",
+            "Content-Security-Policy": "default-src 'self'; img-src 'self' data:; media-src 'self' blob: data:; frame-ancestors 'none'",
         })
     return response
 

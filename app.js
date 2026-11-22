@@ -53,6 +53,25 @@ const strings = {
   },
 };
 
+Object.assign(strings.en, {
+  appearance:'Appearance', wallpaper:'Wallpaper', rotate:'Auto Rotate', shuffle:'Shuffle Now', solid:'Solid color',
+  theme:'Theme', light:'Light', dark:'Dark', search:'Search this chat', noResults:'No matching messages.',
+  emojiSearch:'Find emojis or paste an emoji', recent:'Recent', quick:'Quick phrases', reply:'Reply',
+  cancel:'Cancel', menu:'Message actions', correction:'Suggest a correction', corrected:'Suggested correction',
+  copyOriginal:'Copy original', copyTranslation:'Copy translation', favorite:'Save phrase', unfavorite:'Remove saved phrase',
+  greetings:'Greetings', travel:'Travel', everyday:'Everyday', callHelp:'On a call', saved:'Saved phrases',
+  originalVolume:'Original volume', translatedVolume:'Translation volume', speed:'Voice speed', replay:'Replay translation', captionsOnly:'Captions only', share:'Share invite', ended:'Call ended.',
+});
+Object.assign(strings.tr, {
+  appearance:'Görünüm', wallpaper:'Duvar kâğıdı', rotate:'Otomatik değiştir', shuffle:'Şimdi değiştir', solid:'Düz renk',
+  theme:'Tema', light:'Açık', dark:'Koyu', search:'Sohbette ara', noResults:'Eşleşen mesaj yok.',
+  emojiSearch:'Emoji ara veya yapıştır', recent:'Son kullanılanlar', quick:'Hazır ifadeler', reply:'Yanıtla',
+  cancel:'İptal', menu:'Mesaj işlemleri', correction:'Düzeltme öner', corrected:'Önerilen düzeltme',
+  copyOriginal:'Orijinali kopyala', copyTranslation:'Çeviriyi kopyala', favorite:'İfadeyi kaydet', unfavorite:'Kayıtlı ifadeyi kaldır',
+  greetings:'Selamlaşma', travel:'Seyahat', everyday:'Günlük', callHelp:'Arama sırasında', saved:'Kayıtlı ifadeler',
+  originalVolume:'Özgün ses seviyesi', translatedVolume:'Çeviri ses seviyesi', speed:'Ses hızı', replay:'Çeviriyi tekrar dinle', captionsOnly:'Yalnızca altyazı', share:'Daveti paylaş', ended:'Arama sona erdi.',
+});
+
 const $ = id => document.getElementById(id);
 let language = localStorage.getItem('connect-language') === 'tr' ? 'tr' : 'en';
 const t = key => strings[language][key] || key;
@@ -71,6 +90,7 @@ let speechIdle;
 let previewRef = 0, draftTimer, typingTimer, remoteTypingTimer;
 let emojiGroup = 'faces';
 const emojiGroups = {
+  recent: '',
   faces: '😀 😃 😄 😁 😆 😂 🤣 😊 🙂 🙃 😉 😍 🥰 😘 😎 🤩 🥳 😇 🤔 🫡 😌 😅 😬 😴 😢 😭 😤 😠 😮 😱 🙄 🫠 🤯 🤗 🤭',
   gestures: '👍 👎 👏 🙌 🤝 👋 👌 ✌️ 🤞 🙏 💪 💯 🫶 👀 🤷 🤦 👏🏽 👍🏽 👋🏽 🙏🏽 🤝🏽',
   hearts: '❤️ 🩷 🧡 💛 💚 💙 🩵 💜 🤎 🖤 🩶 🤍 💔 💞 💕 💖 💝 💘 ❣️ 🌹 ✨',
@@ -87,12 +107,18 @@ function drawEmoji() {
     $('emojiTabs').append(button);
   }
   $('emojiGrid').replaceChildren();
-  for (const emoji of emojiGroups[emojiGroup].split(' ')) {
+  const query = $('emojiSearch').value.trim().toLowerCase();
+  const names = {'😊':'smile gülümse', '😂':'laugh gülmek', '❤️':'heart love kalp aşk', '👍':'thumbs up likes beğeni', '👏':'clap alkış', '🎉':'party kutlama', '🇹🇷':'turkey türkiye'};
+  const items = query ? [...new Set(Object.values(emojiGroups).join(' ').split(' '))].filter(icon => icon.includes(query) || names[icon]?.includes(query)) :
+    (emojiGroup === 'recent' ? readList('connect-recent') : emojiGroups[emojiGroup].split(' '));
+  for (const emoji of items.filter(Boolean)) {
     $('emojiGrid').append(action(emoji, () => {
       const draft = $('draft');
       if (draft.value.length - (draft.selectionEnd - draft.selectionStart) + emoji.length > draft.maxLength) return;
       draft.setRangeText(emoji, draft.selectionStart, draft.selectionEnd, 'end');
       draft.focus();
+      const recent = [emoji, ...readList('connect-recent').filter(item => item !== emoji)].slice(0, 20);
+      localStorage.setItem('connect-recent', JSON.stringify(recent));
       updateDraft();
     }));
   }
@@ -163,7 +189,13 @@ function labelUI() {
   drawCall();
   drawRecord();
   drawMessages();
+  $('search').placeholder = t('search');
+  $('search').setAttribute('aria-label', t('search'));
+  $('emojiSearch').placeholder = t('emojiSearch');
+  $('emojiSearch').setAttribute('aria-label', t('emojiSearch'));
+  $('copy').textContent = t('share');
   drawEmoji();
+  drawQuick();
   updateDraft(false);
 }
 function drawPresence() {
@@ -213,10 +245,17 @@ function messageRow(message, caption) {
   const row = element(caption ? 'p' : 'article', '', caption ? '' : 'bubble' + (own ? ' mine' : ''));
   row.dataset.key = message.key;
   if (!caption) {
+    const query = $('search').value.trim().toLocaleLowerCase(language);
+    row.hidden = Boolean(query && ![message.original, message.translated, message.correction].some(value => value?.toLocaleLowerCase(language).includes(query)));
+  }
+  if (!caption) {
     const time = Number.isFinite(message.time) ? ' · ' +
       new Intl.DateTimeFormat(language, {hour:'numeric', minute:'2-digit'}).format(message.time) : '';
     row.append(element('small', t(own ? 'you' : 'other') + time));
-    row.append(element('div', messageText(message)));
+    if (message.reply) row.append(element('blockquote', messageText(message.reply)));
+    const body = element('div');
+    linkText(body, messageText(message));
+    row.append(body);
   } else {
     row.append(element('strong', t(own ? 'you' : 'other') + ' · '), document.createTextNode(messageText(message)));
   }
@@ -254,6 +293,25 @@ function messageRow(message, caption) {
     }
     row.append(details);
   }
+  if (!caption) {
+    if (message.correction) row.append(element('div', t('corrected') + ' · ' + message.correction, 'secondary'));
+    const options = element('details', '', 'message-actions');
+    options.append(element('summary', t('menu')));
+    options.append(action('reply', () => setReply(message)));
+    if (message.original) options.append(action('copyOriginal', () => copyText(message.original)));
+    if (message.translated) options.append(action('copyTranslation', () => copyText(message.translated)));
+    if (message.translated) options.append(action('correction', () => {
+      const value = window.prompt(t('correction'));
+      if (value?.trim() && value.trim().length <= 300) send({type:'correction', key:message.key, value});
+    }));
+    for (const emoji of ['👍','❤️','😂','🙌']) {
+      const count = Object.values(message.reactions || {}).filter(value => value === emoji).length;
+      const button = action(emoji + (count ? ' ' + count : ''), () => send({type:'reaction', key:message.key, value:emoji}));
+      button.setAttribute('aria-pressed', String(message.reactions?.[id] === emoji));
+      options.append(button);
+    }
+    row.append(options);
+  }
   return row;
 }
 function putRow(list, message, caption) {
@@ -273,6 +331,7 @@ function drawMessages() {
   $('messages').replaceChildren();
   for (const message of messages.values()) putRow($('messages'), message, false);
   if (!messages.size) $('messages').append(element('p', t('empty'), 'empty'));
+  else if (![...$('messages').children].some(row => !row.hidden)) $('messages').append(element('p', t('noResults'), 'empty'));
   $('captions').replaceChildren();
   for (const message of phrases.values()) putRow($('captions'), message, true);
 }
@@ -290,13 +349,14 @@ function storeMessage(message) {
   if (message.kind === 'phrase') {
     if (call?.id !== message.call) return;
     phrases.set(message.key, message);
+    if (message.sender !== id && message.status === 'done') $('replay').disabled = false;
     putRow($('captions'), message, true);
     for (const phrase of phrases.values()) {
       if (phrase.sender === id || automatic.has(phrase.key)) continue;
       if (phrase.status === 'pending') break;
       if (phrase.status !== 'done') continue;
       automatic.add(phrase.key);
-      if ($('hear').value !== 'original') enqueueSpeech(messageText(phrase), language, call.id);
+      if (['translated', 'both'].includes($('hear').value)) enqueueSpeech(messageText(phrase), language, call.id);
     }
     if (pc?.connectionState === 'connected') reflectCapture();
   } else {
@@ -329,6 +389,7 @@ function connect(type, code) {
       joined = true;
       $('lobby').hidden = true;
       $('room').hidden = false;
+      changeWallpaper();
       for (const key of messages.keys()) removeMessage(key);
       for (const message of event.messages) messages.set(message.key, message);
       labelUI();
@@ -398,6 +459,8 @@ function resetRoom() {
   $('lobby').hidden = false;
   $('code').value = '';
   $('draft').value = '';
+  $('search').value = '';
+  setReply(null);
   updateDraft(false);
   showTyping(false);
   history.replaceState(null, '', location.pathname);
@@ -558,7 +621,11 @@ async function configureWorklet(stream) {
 }
 function updateCall(next) {
   const oldId = call?.id;
+  const wasActive = call?.state === 'active';
   call = next;
+  if (!next && wasActive) notice('ended');
+  if (!next) $('replay').disabled = true;
+  drawCallTime();
   if (oldId !== next?.id) updateDraft(false);
   if (!next) {
     closePeer();
@@ -612,7 +679,7 @@ function reflectCapture() {
     pending ? 'translating' : $('capture').value === 'auto' && !muted ? 'ready' : '');
 }
 function updateAudioMode() {
-  peerAudio.muted = $('hear').value === 'translated';
+  peerAudio.muted = ['translated','captions'].includes($('hear').value);
   if (!peerAudio.muted && peerAudio.srcObject) peerAudio.play().catch(() => notice('playback'));
 }
 
@@ -741,6 +808,8 @@ async function localSpeech(job, epoch) {
   const url = URL.createObjectURL(blob);
   try {
     spokenAudio.src = url;
+    spokenAudio.volume = Number($('translatedVolume').value);
+    spokenAudio.playbackRate = Number($('speed').value);
     await new Promise((resolve, reject) => {
       activeSpeechCancel = () => { spokenAudio.pause(); resolve(); };
       spokenAudio.onended = resolve;
@@ -755,8 +824,11 @@ async function localSpeech(job, epoch) {
     await new Promise(resolve => {
       const source = audioContext.createBufferSource();
       source.buffer = buffer;
-      source.connect(audioContext.destination);
-      source.onended = () => { source.disconnect(); resolve(); };
+      source.playbackRate.value = Number($('speed').value);
+      const gain = audioContext.createGain();
+      gain.gain.value = Number($('translatedVolume').value);
+      source.connect(gain).connect(audioContext.destination);
+      source.onended = () => { source.disconnect(); gain.disconnect(); resolve(); };
       activeSpeechCancel = () => source.stop();
       source.start();
     });
@@ -775,6 +847,8 @@ async function speak(job, epoch) {
       await new Promise((resolve, reject) => {
         const speech = new SpeechSynthesisUtterance(job.text);
         speech.voice = voice;
+        speech.volume = Number($('translatedVolume').value);
+        speech.rate = Number($('speed').value);
         speech.lang = voice.lang;
         const finish = handler => () => { clearTimeout(timer); handler(); };
         const timer = setTimeout(() => { synth.cancel(); reject(new Error('TTS timeout')); }, 45000);
@@ -815,6 +889,134 @@ async function playQueue() {
   playingQueue = false;
 }
 
+let replyTo;
+function setReply(message) {
+  replyTo = message;
+  $('replyBanner').hidden = !message;
+  $('replyLabel').textContent = message ? t('reply') + ' · ' + messageText(message).slice(0, 160) : '';
+  if (message) $('draft').focus();
+}
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); }
+  catch { window.prompt(t('copyOriginal'), text); }
+}
+function linkText(node, text) {
+  for (const [index, part] of text.split(/(https?:\/\/[^\s<>"']+)/gi).entries()) {
+    if (index % 2 === 0) {
+      node.append(document.createTextNode(part));
+    } else {
+      const url = part.replace(/[.,!?;:]+$/, '');
+      const link = element('a', url);
+      link.href = url;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      node.append(link, document.createTextNode(part.slice(url.length)));
+    }
+  }
+}
+function readList(key) {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(key) || '[]');
+    return Array.isArray(parsed) ? parsed : [];
+  } catch { return []; }
+}
+const quickPhrases = [
+  ['greetings','Hello!','Merhaba!'],
+  ['greetings','Nice to meet you.','Tanıştığımıza memnun oldum.'],
+  ['travel','Where is the nearest station?','En yakın istasyon nerede?'],
+  ['travel','How much does this cost?','Bu ne kadar?'],
+  ['everyday','Thanks for your help.','Yardımın için teşekkürler.'],
+  ['everyday','I’ll message you later.','Sana daha sonra mesaj yazacağım.'],
+  ['callHelp','Could you repeat that?','Bunu tekrar eder misin?'],
+  ['callHelp','I can hear you.','Seni duyabiliyorum.'],
+  ['callHelp','Please speak a little more slowly.','Lütfen biraz daha yavaş konuş.'],
+];
+function drawQuick() {
+  const container = $('quickItems');
+  const favorites = readList('connect-favorites');
+  container.replaceChildren();
+  for (const group of ['saved','greetings','travel','everyday','callHelp']) {
+    const entries = quickPhrases.filter((item, index) => group === 'saved' ? favorites.includes(index) : item[0] === group);
+    if (!entries.length) continue;
+    container.append(element('strong', t(group)));
+    for (const entry of entries) {
+      const index = quickPhrases.indexOf(entry);
+      const own = entry[language === 'en' ? 1 : 2];
+      const other = entry[language === 'en' ? 2 : 1];
+      const row = element('div', '', 'quick-row');
+      const insert = action(own, () => {
+        $('draft').value = own;
+        $('quick').open = false;
+        $('draft').focus();
+        updateDraft();
+      });
+      insert.append(element('small', other));
+      const saved = favorites.includes(index);
+      const pin = action(saved ? '★' : '☆', () => {
+        const values = saved ? favorites.filter(value => value !== index) : [...favorites, index];
+        localStorage.setItem('connect-favorites', JSON.stringify(values));
+        drawQuick();
+      });
+      pin.setAttribute('aria-label', t(saved ? 'unfavorite' : 'favorite'));
+      row.append(insert, pin);
+      container.append(row);
+    }
+  }
+}
+const scenes = ['istanbul','coast','london','aurora'];
+let activeScene = localStorage.getItem('connect-last-wallpaper') || '';
+function changeWallpaper(shuffle = false) {
+  const mode = $('wallpaper').value;
+  if (mode === 'auto' || shuffle) {
+    const next = scenes.filter(scene => scene !== activeScene);
+    activeScene = next[Math.floor(Math.random() * next.length)];
+  } else activeScene = mode;
+  document.body.dataset.wallpaper = activeScene;
+  localStorage.setItem('connect-last-wallpaper', activeScene);
+}
+$('wallpaper').value = localStorage.getItem('connect-wallpaper') || 'auto';
+if (!$('wallpaper').value) $('wallpaper').value = 'auto';
+$('wallpaper').onchange = () => {
+  localStorage.setItem('connect-wallpaper', $('wallpaper').value);
+  changeWallpaper();
+};
+$('shuffle').onclick = () => {
+  changeWallpaper(true);
+  if ($('wallpaper').value !== 'auto') {
+    $('wallpaper').value = activeScene;
+    localStorage.setItem('connect-wallpaper', activeScene);
+  }
+};
+$('theme').value = localStorage.getItem('connect-theme') === 'dark' ? 'dark' : 'light';
+$('theme').onchange = () => {
+  document.body.dataset.theme = $('theme').value;
+  localStorage.setItem('connect-theme', $('theme').value);
+};
+$('theme').onchange();
+changeWallpaper();
+setInterval(() => {
+  if ($('wallpaper').value === 'auto' && !document.hidden && !call) changeWallpaper();
+}, 45000);
+$('search').oninput = drawMessages;
+$('emojiSearch').oninput = drawEmoji;
+$('cancelReply').onclick = () => setReply(null);
+function drawCallTime() {
+  const started = call?.started;
+  const seconds = started ? Math.max(0, Math.floor((Date.now() - started) / 1000)) : 0;
+  $('callTime').textContent = started ? Math.floor(seconds / 60) + ':' + String(seconds % 60).padStart(2,'0') : '';
+}
+setInterval(drawCallTime, 1000);
+$('originalVolume').oninput = () => { peerAudio.volume = Number($('originalVolume').value); };
+$('translatedVolume').oninput = () => { spokenAudio.volume = Number($('translatedVolume').value); };
+$('speed').onchange = () => { spokenAudio.playbackRate = Number($('speed').value); };
+$('replay').onclick = () => {
+  const last = [...phrases.values()].reverse().find(phrase => phrase.sender !== id && phrase.status === 'done');
+  if (last && call) {
+    unlockAudio();
+    enqueueSpeech(messageText(last), language, call.id);
+  }
+};
+
 $('locale').onchange = () => {
   language = $('locale').value;
   localStorage.setItem('connect-language', language);
@@ -832,6 +1034,10 @@ $('join').onsubmit = event => {
 };
 $('copy').onclick = async () => {
   try {
+    if (navigator.share) {
+      try { await navigator.share({title:document.title, url:location.href}); return; }
+      catch (error) { if (error.name === 'AbortError') return; }
+    }
     await navigator.clipboard.writeText(location.href);
     notice('copied');
   } catch {
@@ -851,9 +1057,10 @@ $('previewToggle').onchange = () => {
 $('compose').onsubmit = event => {
   event.preventDefault();
   const text = $('draft').value.trim();
-  if (text && send({type:'text', id:crypto.randomUUID(), text})) {
+  if (text && send({type:'text', id:crypto.randomUUID(), text, reply:replyTo?.key})) {
     $('draft').value = '';
     $('emojiPicker').open = false;
+    setReply(null);
     updateDraft();
     notice('');
   }
@@ -885,7 +1092,7 @@ $('mute').onclick = () => {
 };
 $('hear').onchange = () => {
   unlockAudio();
-  if ($('hear').value === 'original') cancelSpeech();
+  if (['original','captions'].includes($('hear').value)) cancelSpeech();
   updateAudioMode();
 };
 $('capture').onchange = () => {
