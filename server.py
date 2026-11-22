@@ -152,7 +152,10 @@ async def cast(room, payload, skip=None):
 
 
 def clean_message(message):
-    return {k: v for k, v in message.items() if k != "busy"}
+    internal = {"busy"}
+    if message["kind"] == "phrase":
+        internal.update({"audio", "mime"})
+    return {key: value for key, value in message.items() if key not in internal}
 
 
 async def presence(room):

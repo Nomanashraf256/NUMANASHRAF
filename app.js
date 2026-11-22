@@ -67,6 +67,7 @@ const messages = new Map(), phrases = new Map(), automatic = new Set(), original
 const speechQueue = [];
 const peerAudio = $('peerAudio'), spokenAudio = $('spokenAudio');
 let activeSpeechCancel;
+let speechIdle;
 let previewRef = 0, draftTimer, typingTimer, remoteTypingTimer;
 let emojiGroup = 'faces';
 const emojiGroups = {
@@ -541,7 +542,10 @@ async function configureWorklet(stream) {
     node.port.onmessage = ({data}) => {
       if (!captureEnabled()) return;
       capturing = Boolean(data.listening);
-      if (data.pcm) uploadPhrase(wave(data.pcm, data.rate));
+      if (data.pcm) {
+        uploadPhrase(wave(data.pcm, data.rate));
+        speechIdle?.();
+      }
       reflectCapture();
     };
     updateCapture();
@@ -597,6 +601,7 @@ function captureEnabled() {
 function updateCapture() {
   worklet?.node.port.postMessage(Boolean(captureEnabled()));
   if (!captureEnabled()) capturing = false;
+  if (!capturing && recording?.kind !== 'phrase') speechIdle?.();
   for (const track of callMic?.getAudioTracks() || []) track.enabled = !muted && !playback;
   drawRecord();
 }
@@ -713,14 +718,26 @@ function cancelSpeech() {
   speechQueue.length = 0;
   playbackEpoch++;
   activeSpeechCancel?.();
+  speechIdle?.();
+}
+async function beginSpeech(epoch) {
+  while (epoch === playbackEpoch && (capturing || recording?.kind === 'phrase')) {
+    await new Promise(resolve => { speechIdle = resolve; });
+    speechIdle = null;
+  }
+  if (epoch !== playbackEpoch) return false;
+  playback = true;
+  updateCapture();
+  reflectCapture();
+  return true;
 }
 async function localSpeech(job, epoch) {
-  const response = await fetch('/tts', {method:'POST', headers:{
+  const response = await fetch('/tts', {method:'POST', signal:AbortSignal.timeout(10000), headers:{
     'Authorization':'Bearer ' + room + '.' + token, 'Content-Type':'application/json',
   }, body:JSON.stringify({text:job.text, lang:job.lang})});
   if (!response.ok) throw new Error('TTS');
   const blob = await response.blob();
-  if (epoch !== playbackEpoch) return;
+  if (!await beginSpeech(epoch)) return;
   const url = URL.createObjectURL(blob);
   try {
     spokenAudio.src = url;
@@ -753,6 +770,7 @@ async function speak(job, epoch) {
   const synth = window.speechSynthesis;
   const voice = synth?.getVoices().find(item => item.localService && item.lang.toLowerCase().split(/[-_]/)[0] === job.lang);
   if (voice) {
+    if (!await beginSpeech(epoch)) return;
     try {
       await new Promise((resolve, reject) => {
         const speech = new SpeechSynthesisUtterance(job.text);
@@ -772,11 +790,10 @@ async function speak(job, epoch) {
   }
   if (epoch === playbackEpoch) await localSpeech(job, epoch);
 }
+let playingQueue = false;
 async function playQueue() {
-  if (playback || !speechQueue.length || recording?.kind === 'phrase') return;
-  playback = true;
-  updateCapture();
-  reflectCapture();
+  if (playingQueue || !speechQueue.length) return;
+  playingQueue = true;
   while (speechQueue.length) {
     const job = speechQueue.shift();
     if (job.callId && job.callId !== call?.id) continue;
@@ -786,14 +803,16 @@ async function playQueue() {
       notice('playback');
     } finally {
       activeSpeechCancel = null;
+      if (playback) {
+        // Give speaker echo a short moment to decay before reopening the mic.
+        await new Promise(resolve => setTimeout(resolve, 150));
+        playback = false;
+        updateCapture();
+        reflectCapture();
+      }
     }
   }
-  // Let room echo decay before enabling speech capture again.
-  await new Promise(resolve => setTimeout(resolve, 180));
-  playback = false;
-  updateCapture();
-  reflectCapture();
-  if (speechQueue.length) playQueue();
+  playingQueue = false;
 }
 
 $('locale').onchange = () => {
