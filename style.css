@@ -261,3 +261,78 @@ footer {
     flex: 1;
   }
 }
+
+:root {
+  --green: #145e64;
+  --muted: #4a676c;
+  --line: #cfe2e5;
+  color: #143037;
+  background: radial-gradient(ellipse at top left, #dcf4ed, transparent 60%), #eff6fa;
+}
+.top {
+  box-shadow: 0 3px 20px #1337460d;
+}
+.mark {
+  background: linear-gradient(145deg, #188779, #164b66);
+}
+#lobby h1 { color: #103942; }
+#room { border-radius: 24px; }
+.room-head { padding: 17px 20px; }
+.chat-tools {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 22px;
+  padding: 8px 20px;
+  border-top: 1px solid var(--line);
+  background: #f7fcfc;
+}
+.chat-tools label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: .88rem;
+  min-height: 36px;
+}
+.chat-tools input {
+  accent-color: var(--green);
+  min-height: auto;
+  margin: 0;
+}
+#messages {
+  background: radial-gradient(circle at 20px 20px,#b9dcda58 1px,transparent 2px) 0 0 / 26px 26px, #edf7f8;
+}
+.bubble { background: #fff; box-shadow: 0 2px 5px #13374615; }
+.bubble.mine { background: #d3f0e3; }
+.secondary, .caption-secondary {
+  display: block;
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid #b6d6d5;
+  color: #284e55;
+  font-size: .9em;
+}
+#typingStatus { margin: 0; color: var(--muted); font-size: .87rem; }
+#preview {
+  margin: 5px 0 9px;
+  padding: 7px 10px;
+  border-left: 3px solid #238375;
+  background: #e8f6f3;
+  border-radius: 6px;
+  overflow-wrap: anywhere;
+}
+#emojiPicker { margin: 0 0 6px; }
+#emojiPicker summary { width: max-content; cursor: pointer; padding: 5px 6px; color: var(--green); }
+.emoji-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 5px 0; }
+.emoji-tabs button[aria-pressed="true"] { background: #d3f0e3; border-color: #2b8271; }
+.emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill,minmax(44px,1fr));
+  gap: 4px;
+  max-height: 175px;
+  overflow: auto;
+}
+.emoji-grid button { padding: 2px; font-size: 1.25rem; }
+@media(max-width: 460px) {
+  .room-head { padding: 10px 12px; }
+  .chat-tools { padding: 4px 12px; column-gap: 12px; }
+}

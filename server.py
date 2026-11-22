@@ -24,6 +24,30 @@ CHAT_LIMIT = 35
 AUDIO_LIMIT = 2_000_000
 ROOM_TTL = 300
 
+# Whole-phrase equivalents for common expressions whose literal meanings differ.
+EXPRESSIONS = {
+    "en": {
+        "no worries": "Sorun değil.",
+        "hang in there": "Dayan, pes etme.",
+        "you got this": "Bunu başarabilirsin.",
+        "my bad": "Benim hatam, kusura bakma.",
+        "what's up": "Naber?",
+        "break a leg": "Bol şans!",
+        "long time no see": "Uzun zamandır görüşmedik.",
+        "keep me posted": "Beni haberdar et.",
+    },
+    "tr": {
+        "kolay gelsin": "Hope the work goes smoothly.",
+        "geçmiş olsun": "I hope you feel better soon.",
+        "eline sağlık": "Thank you for your hard work.",
+        "afiyet olsun": "Enjoy your meal.",
+        "kusura bakma": "Sorry about that.",
+        "hayırlı olsun": "Congratulations!",
+        "gözün aydın": "Congratulations on the good news!",
+        "naber": "What's up?",
+    },
+}
+
 
 class Models:
     def __init__(self):
@@ -43,6 +67,24 @@ class Models:
                                     compute_type="int8", cpu_threads=threads, local_files_only=True)
 
     def translate(self, source, phrase):
+        # Preserve emoji-only messages and isolate common emoji sequences from the model.
+        emoji_pattern = r"([\U0001F1E6-\U0001FAFF\u2600-\u27BF][\U0001F1E6-\U0001FAFF\u2600-\u27BF\ufe0f\u200d]*)"
+        segments = re.split(emoji_pattern, phrase)
+        if len(segments) == 1:
+            return self.translate_text(source, phrase)
+        translated = []
+        for index, part in enumerate(segments):
+            trimmed = part.strip()
+            if index % 2 or not any(char.isalpha() for char in trimmed):
+                translated.append(part)
+            else:
+                translated.append(part.replace(trimmed, self.translate_text(source, trimmed), 1))
+        return "".join(translated)
+
+    def translate_text(self, source, phrase):
+        key = " ".join(phrase.replace("’", "'").casefold().strip(" .!?").split())
+        if key in EXPRESSIONS[source]:
+            return EXPRESSIONS[source][key]
         target = "tr" if source == "en" else "en"
         tokenizer, model = self.pairs[f"{source}_{target}"]
         output = model.translate_batch([tokenizer.encode(phrase, out_type=str)], beam_size=4)
@@ -75,7 +117,7 @@ class Models:
         if not frames:
             raise ValueError("No audio frames")
         pcm = np.concatenate(frames).astype(np.float32) / 32768
-        segments, _ = self.whisper.transcribe(pcm, language=source, beam_size=3, temperature=0,
+        segments, _ = self.whisper.transcribe(pcm, language=source, beam_size=2, temperature=0,
                                               condition_on_previous_text=False, vad_filter=True)
         result = " ".join(segment.text.strip() for segment in segments).strip()
         if not result:
@@ -143,6 +185,16 @@ async def process(app, room, message):
         await cast(room, {"type": "message", "message": clean_message(message)})
 
 
+async def preview(app, ws, source, phrase, ref):
+    try:
+        result = await asyncio.get_running_loop().run_in_executor(
+            WORKERS, app["models"].translate, source, phrase)
+    except Exception:
+        await send(ws, {"type": "preview", "ref": ref, "status": "translation"})
+    else:
+        await send(ws, {"type": "preview", "ref": ref, "status": "done", "text": result})
+
+
 async def socket(request):
     origin = request.headers.get("Origin")
     if not origin or origin not in {f"{request.scheme}://{request.host}", os.getenv("PUBLIC_ORIGIN")}:
@@ -197,6 +249,22 @@ async def socket(request):
             if kind == "language" and data.get("lang") in LANGS:
                 member["lang"] = data["lang"]
                 await presence(room)
+            if kind == "typing":
+                await cast(room, {"type": "typing", "active": data.get("active") is True}, token)
+            if kind == "preview":
+                phrase = data.get("text")
+                source = member["lang"]
+                ref = data.get("ref")
+                now = time.monotonic()
+                if (isinstance(phrase, str) and 0 < len(phrase.strip()) <= 1500
+                        and isinstance(ref, int) and now - member.get("preview_at", -10) >= .6
+                        and len(JOBS) == 0 and not call):
+                    member["preview_at"] = now
+                    task = asyncio.create_task(preview(request.app, ws, source, phrase.strip(), ref))
+                    JOBS.add(task)
+                    task.add_done_callback(JOBS.discard)
+                else:
+                    await send(ws, {"type": "preview", "ref": ref, "status": "later"})
             if kind == "leave":
                 del room["members"][token]
                 room["call"] = None

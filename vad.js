@@ -34,7 +34,7 @@ class Phrases extends AudioWorkletProcessor {
     this.parts.push(input.slice());
     this.length += input.length;
     this.quiet = loud ? 0 : this.quiet + input.length;
-    if (this.quiet >= sampleRate * .65 || this.length >= sampleRate * 10) {
+    if (this.quiet >= sampleRate * .48 || this.length >= sampleRate * 10) {
       const pcm = new Float32Array(this.length);
       let index = 0;
       for (const part of this.parts) {

@@ -19,6 +19,10 @@ const strings = {
     mediaUnsupported:'This browser does not support audio recording.', autoFailure:'Automatic capture unavailable. Use push to talk.',
     playback:'Playback was blocked or unavailable. Tap Play translation to retry.', disconnected:'Connection lost. Please retry after reconnecting.',
     other:'Other person', you:'You', tooLarge:'Recording too large. Try a shorter message.',
+    dual:'Show both languages', previewToggle:'Preview translation', emoji:'😊 Emoji',
+    faces:'Faces', gestures:'Gestures', hearts:'Hearts', extras:'Symbols',
+    typing:'Other person is typing…', previewPending:'Translating draft…',
+    previewLater:'Preview waits until the call or current translation finishes.',
     messageLabel:'Message', captions:'Call captions', chat:'Messages',
   },
   tr: {
@@ -41,6 +45,10 @@ const strings = {
     mediaUnsupported:'Tarayıcınız ses kaydını desteklemiyor.', autoFailure:'Otomatik algılama kullanılamıyor. Bas ve konuş seçeneğini kullanın.',
     playback:'Ses oynatılamadı. Yeniden denemek için Çeviriyi dinle düğmesine dokunun.', disconnected:'Bağlantı kesildi. Yeniden bağlanınca tekrar deneyin.',
     other:'Diğer kişi', you:'Siz', tooLarge:'Kayıt çok büyük. Daha kısa bir mesaj deneyin.',
+    dual:'İki dili göster', previewToggle:'Çeviriyi önizle', emoji:'😊 Emoji',
+    faces:'Yüzler', gestures:'Hareketler', hearts:'Kalpler', extras:'Simgeler',
+    typing:'Diğer kişi yazıyor…', previewPending:'Taslak çevriliyor…',
+    previewLater:'Önizleme, arama veya mevcut çeviri bitince kullanılabilir.',
     messageLabel:'Mesaj', captions:'Arama altyazıları', chat:'Mesajlar',
   },
 };
@@ -59,6 +67,65 @@ const messages = new Map(), phrases = new Map(), automatic = new Set(), original
 const speechQueue = [];
 const peerAudio = $('peerAudio'), spokenAudio = $('spokenAudio');
 let activeSpeechCancel;
+let previewRef = 0, draftTimer, typingTimer, remoteTypingTimer;
+let emojiGroup = 'faces';
+const emojiGroups = {
+  faces: '😀 😃 😄 😁 😆 😂 🤣 😊 🙂 🙃 😉 😍 🥰 😘 😎 🤩 🥳 😇 🤔 🫡 😌 😅 😬 😴 😢 😭 😤 😠 😮 😱 🙄 🫠 🤯 🤗 🤭',
+  gestures: '👍 👎 👏 🙌 🤝 👋 👌 ✌️ 🤞 🙏 💪 💯 🫶 👀 🤷 🤦 👏🏽 👍🏽 👋🏽 🙏🏽 🤝🏽',
+  hearts: '❤️ 🩷 🧡 💛 💚 💙 🩵 💜 🤎 🖤 🩶 🤍 💔 💞 💕 💖 💝 💘 ❣️ 🌹 ✨',
+  extras: '🎉 🎊 🎂 🎁 🏆 ⭐ 🌟 ✅ ❌ ⚠️ 🔥 💬 🎙️ 📞 🌍 🇹🇷 🇬🇧 🇺🇸 ☕ 🍵 🕒 📍 🙏 ✨',
+};
+$('dual').checked = localStorage.getItem('connect-dual') !== 'false';
+$('previewToggle').checked = localStorage.getItem('connect-preview') === 'true';
+
+function drawEmoji() {
+  $('emojiTabs').replaceChildren();
+  for (const key of Object.keys(emojiGroups)) {
+    const button = action(key, () => { emojiGroup = key; drawEmoji(); });
+    button.setAttribute('aria-pressed', String(key === emojiGroup));
+    $('emojiTabs').append(button);
+  }
+  $('emojiGrid').replaceChildren();
+  for (const emoji of emojiGroups[emojiGroup].split(' ')) {
+    $('emojiGrid').append(action(emoji, () => {
+      const draft = $('draft');
+      if (draft.value.length - (draft.selectionEnd - draft.selectionStart) + emoji.length > draft.maxLength) return;
+      draft.setRangeText(emoji, draft.selectionStart, draft.selectionEnd, 'end');
+      draft.focus();
+      updateDraft();
+    }));
+  }
+}
+function updateDraft(announce = true) {
+  const ref = ++previewRef;
+  clearTimeout(draftTimer);
+  clearTimeout(typingTimer);
+  const text = $('draft').value.trim();
+  const box = $('preview');
+  box.hidden = !$('previewToggle').checked || !text;
+  if (announce) {
+    send({type:'typing', active:Boolean(text)});
+    if (text) typingTimer = setTimeout(() => send({type:'typing', active:false}), 2200);
+  }
+  if (box.hidden) {
+    box.textContent = '';
+    return;
+  }
+  if (call) {
+    box.textContent = t('previewLater');
+    return;
+  }
+  box.textContent = t('previewPending');
+  draftTimer = setTimeout(() => {
+    if (!send({type:'preview', text, ref})) box.textContent = t('disconnected');
+  }, 750);
+}
+function showTyping(active) {
+  clearTimeout(remoteTypingTimer);
+  $('typingStatus').textContent = active ? t('typing') : '';
+  if (active) remoteTypingTimer = setTimeout(() => showTyping(false), 3000);
+}
+
 
 function notice(key) {
   noticeKey = key;
@@ -95,6 +162,8 @@ function labelUI() {
   drawCall();
   drawRecord();
   drawMessages();
+  drawEmoji();
+  updateDraft(false);
 }
 function drawPresence() {
   $('presence').textContent = t(!online() ? 'reconnect' : peerMember?.online ? 'online' : peerMember ? 'offline' : 'waiting');
@@ -143,7 +212,9 @@ function messageRow(message, caption) {
   const row = element(caption ? 'p' : 'article', '', caption ? '' : 'bubble' + (own ? ' mine' : ''));
   row.dataset.key = message.key;
   if (!caption) {
-    row.append(element('small', t(own ? 'you' : 'other')));
+    const time = Number.isFinite(message.time) ? ' · ' +
+      new Intl.DateTimeFormat(language, {hour:'numeric', minute:'2-digit'}).format(message.time) : '';
+    row.append(element('small', t(own ? 'you' : 'other') + time));
     row.append(element('div', messageText(message)));
   } else {
     row.append(element('strong', t(own ? 'you' : 'other') + ' · '), document.createTextNode(messageText(message)));
@@ -157,10 +228,18 @@ function messageRow(message, caption) {
       enqueueSpeech(messageText(message), language, caption ? call?.id : null);
     }));
   }
-  if (!caption && (message.original || message.audio)) {
+  const secondary = message.lang === language ? message.translated : message.original;
+  const showSecondary = message.status === 'done' && $('dual').checked && secondary && secondary !== messageText(message);
+  if (showSecondary) {
+    const second = element('span', secondary, caption ? 'caption-secondary' : 'secondary');
+    second.lang = message.lang === language ? otherLanguage(language) : message.lang;
+    row.append(second);
+  }
+  if (!caption && (message.audio || (!showSecondary && secondary && secondary !== messageText(message)))) {
     const details = element('details');
-    details.append(element('summary', t('show')));
-    if (message.original) details.append(element('div', message.original));
+    details.append(element('summary', t(message.audio || message.lang !== language ? 'show' : 'translated')));
+    const detailText = message.audio ? message.original : secondary;
+    if (detailText) details.append(element('div', detailText));
     if (message.audio) {
       const audio = element('audio');
       audio.controls = true;
@@ -266,6 +345,11 @@ function connect(type, code) {
           queueSignal(() => startOffer());
         }
       }
+    } else if (event.type === 'typing') showTyping(event.active);
+    else if (event.type === 'preview' && event.ref === previewRef) {
+      $('preview').textContent = event.status === 'done' ? event.text :
+        t(event.status === 'later' ? 'previewLater' : event.status);
+      $('preview').lang = event.status === 'done' ? otherLanguage(language) : language;
     } else if (event.type === 'message') storeMessage(event.message);
     else if (event.type === 'remove') removeMessage(event.key);
     else if (event.type === 'call') {
@@ -313,6 +397,8 @@ function resetRoom() {
   $('lobby').hidden = false;
   $('code').value = '';
   $('draft').value = '';
+  updateDraft(false);
+  showTyping(false);
   history.replaceState(null, '', location.pathname);
 }
 
@@ -469,6 +555,7 @@ async function configureWorklet(stream) {
 function updateCall(next) {
   const oldId = call?.id;
   call = next;
+  if (oldId !== next?.id) updateDraft(false);
   if (!next) {
     closePeer();
     mediaEpoch++;
@@ -733,11 +820,22 @@ $('copy').onclick = async () => {
   }
 };
 $('leave').onclick = () => { send({type:'leave'}); resetRoom(); notice(''); };
+$('draft').addEventListener('input', () => updateDraft());
+$('dual').onchange = () => {
+  localStorage.setItem('connect-dual', String($('dual').checked));
+  drawMessages();
+};
+$('previewToggle').onchange = () => {
+  localStorage.setItem('connect-preview', String($('previewToggle').checked));
+  updateDraft(false);
+};
 $('compose').onsubmit = event => {
   event.preventDefault();
   const text = $('draft').value.trim();
   if (text && send({type:'text', id:crypto.randomUUID(), text})) {
     $('draft').value = '';
+    $('emojiPicker').open = false;
+    updateDraft();
     notice('');
   }
 };

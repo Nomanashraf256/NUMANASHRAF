@@ -105,11 +105,22 @@
 </div>
 </div>
 </div>
+<div class="chat-tools">
+<label><input type="checkbox" id="dual"><span data-t="dual"></span></label>
+<label><input type="checkbox" id="previewToggle"><span data-t="previewToggle"></span></label>
+</div>
 <div id="messages" role="log">
 </div>
 <div class="composer">
 <p id="recordStatus" role="status">
 </p>
+<p id="typingStatus" role="status"></p>
+<div id="preview" role="status" hidden></div>
+<details id="emojiPicker">
+<summary data-t="emoji"></summary>
+<div id="emojiTabs" class="emoji-tabs"></div>
+<div id="emojiGrid" class="emoji-grid"></div>
+</details>
 <form class="row" id="compose">
 <button id="mic" type="button" data-t="record">
 </button>
