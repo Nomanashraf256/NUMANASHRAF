@@ -67,10 +67,13 @@ async def run(url, english, turkish, ca=None, rtc=False):
         two = await wait(b, "room")
         await wait(a, "presence", lambda event: len(event["members"]) == 2)
         async with session() as third:
-            intruder = await third.ws_connect(url + "/ws")
-            await intruder.send_json({"type": "join", "lang": "tr", "code": one["code"]})
-            assert (await wait(intruder, "error"))["error"] == "full"
-        print("Private room, invite-code join, presence, third participant rejected")
+            guest = await third.ws_connect(url + "/ws")
+            await guest.send_json({"type": "join", "lang": "tr", "code": one["code"]})
+            assert (await wait(guest, "room"))["role"] == "guest"
+            await wait(a, "presence", lambda event: event["count"] == 3)
+            await guest.close()
+            await wait(a, "presence", lambda event: event["count"] == 2)
+        print("Shareable room, invite-code join, and three-person presence")
 
         async def message(sender, listener, type_, payload, status="done"):
             identifier = str(uuid.uuid4())
@@ -103,7 +106,10 @@ async def run(url, english, turkish, ca=None, rtc=False):
             payload = {"audio": base64.b64encode(Path(fixture).read_bytes()).decode(), "mime": "audio/wav"}
             voice = await message(sender, receiver, "voice", payload)
             assert expected in voice["translated"].lower(), voice["translated"]
-            assert voice["audio"] == payload["audio"]
+            auth = "Bearer " + credentials["code"] + "." + credentials["token"]
+            async with client.get(url + "/media/" + voice["key"], headers={"Authorization": auth}) as response:
+                assert response.status == 200
+                assert await response.read() == base64.b64decode(payload["audio"])
             duration = await audio(client, credentials, target, voice["translated"])
             print(f"Voice {voice['lang']}→{target}: {voice['original']} → {voice['translated']} | TTS {duration}s")
 
@@ -135,13 +141,13 @@ async def run(url, english, turkish, ca=None, rtc=False):
             duration = await audio(client, credentials, target, phrase["translated"])
             print(f"Call phrase {phrase['lang']}→{target}: {phrase['translated']} | TTS {duration}s")
         await b.close()
-        await wait(a, "presence", lambda item: any(not member["online"] for member in item["members"]))
+        await wait(a, "presence", lambda item: item["count"] == 1)
         b = await second.ws_connect(url + "/ws")
         await b.send_json({"type": "join", "code": one["code"], "token": two["token"], "lang": "tr"})
         resumed = await wait(b, "room")
         assert resumed["id"] == two["id"] and resumed["call"]["id"] == cid
         assert all(item["kind"] != "phrase" for item in resumed["messages"])
-        await wait(a, "presence", lambda event: all(member["online"] for member in event["members"]))
+        await wait(a, "presence", lambda event: event["count"] == 2)
         if rtc:
             await audio_path(a, b, cid)
             print("WebRTC audio renegotiated after a signaling session reconnect")

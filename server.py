@@ -14,20 +14,21 @@ from pathlib import Path
 
 from aiohttp import ClientError, ClientSession, ClientTimeout, web
 
+from chat_store import ChatStore
+
 ROOT = Path(__file__).resolve().parent
 MODELS = Path(os.getenv("MODELS", ROOT / "models"))
 ICE = json.loads(os.getenv("ICE_SERVERS", "[]"))
-ROOMS = {}
 WORKERS = ThreadPoolExecutor(max_workers=2)
 JOBS = set()
 LANGS = {"en", "tr"}
-CHAT_LIMIT = 35
+CAPTION_LIMIT = 35
 AUDIO_LIMIT = 2_000_000
-ROOM_TTL = 300
 MEDIA_LIMIT = 12 * 1024 * 1024
-MEDIA_TOTAL = 48 * 1024 * 1024
 MEDIA_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif",
-               "video/mp4", "video/webm", "video/quicktime"}
+               "video/mp4", "video/webm", "video/quicktime", "application/pdf",
+               "text/plain", "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+               "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}
 
 # Whole-phrase equivalents for common expressions whose literal meanings differ.
 EXPRESSIONS = {
@@ -151,23 +152,41 @@ async def send(ws, payload):
             pass
 
 
-async def cast(room, payload, skip=None):
-    await asyncio.gather(*(send(member["ws"], payload) for token, member in room["members"].items()
-                           if token != skip))
+async def cast(room, payload, skip=None, only=None):
+    connections = tuple(room["members"].items())
+    await asyncio.gather(*(send(member["ws"], payload) for token, member in connections
+                           if token != skip and (only is None or member["id"] in only)))
 
 
 def clean_message(message):
-    internal = {"busy", "media_bytes"}
-    if message["kind"] == "phrase":
-        internal.update({"audio", "mime"})
-    return {key: value for key, value in message.items() if key not in internal}
+    return {key: value for key, value in message.items() if key not in {"busy", "media_bytes", "audio"}}
 
 
 async def presence(room):
-    await cast(room, {"type": "presence", "members": [
-        {"id": member["id"], "lang": member["lang"], "online": bool(member["ws"] and not member["ws"].closed)}
-        for member in room["members"].values()
+    members = [member for member in room["members"].values() if not member["ws"].closed]
+    if room["call"]:
+        selected = room["call"]["members"]
+        members.sort(key=lambda member: member["id"] not in selected)
+    await cast(room, {"type": "presence", "count": len(members), "members": [
+        {key: member[key] for key in ("id", "name", "lang", "role")} | {"online": True}
+        for member in members[:2]
     ]})
+
+
+def find_message(room, key, include_audio=False):
+    return room["store"].message(room["code"], key, include_audio) if isinstance(key, str) else None
+
+
+async def update_message(room, message):
+    room["store"].save(room["code"], message)
+    await cast(room, {"type": "message", "message": clean_message(message)})
+
+
+def cursor(value):
+    try:
+        return max(0, min(int(value), 2**63 - 1))
+    except (ValueError, TypeError):
+        return 0
 
 
 async def process(app, room, message):
@@ -187,10 +206,17 @@ async def process(app, room, message):
         message["status"] = stage
     finally:
         message["busy"] = False
-    if message["kind"] != "phrase" or message["call"] == (room["call"] or {}).get("id"):
-        if message["kind"] == "phrase" and message["status"] == "done":
-            message.pop("audio", None)
-        await cast(room, {"type": "message", "message": clean_message(message)})
+    if message["kind"] != "phrase":
+        current = find_message(room, message["key"])
+        if current and not current.get("deleted"):
+            for field in ("original", "translated", "status"):
+                current[field] = message[field]
+            await update_message(room, current)
+    elif message["call"] == (room["call"] or {}).get("id"):
+        message.pop("audio", None)
+        await cast(room, {"type": "message", "message": clean_message(message)}, only=room["call"]["members"])
+    room["jobs"].discard(message["key"])
+    discard_idle_room(app, room)
 
 
 async def preview(app, ws, source, phrase, ref):
@@ -217,31 +243,40 @@ async def socket(request):
         code = secrets.token_urlsafe(18) if start["type"] == "create" else start.get("code", "")
         if not isinstance(code, str):
             return ws
-        if start["type"] == "create":
-            if len(ROOMS) >= 100:
-                await send(ws, {"type": "error", "error": "busy"})
-                return ws
-            ROOMS[code] = {"members": {}, "messages": {}, "call": None, "touched": time.monotonic()}
-        room = ROOMS.get(code)
-        if room is None:
+        store = request.app["chat_store"]
+        rooms = request.app["rooms"]
+        creating = start["type"] == "create"
+        if creating:
+            store.create_room(code)
+        elif not re.fullmatch(r"[A-Za-z0-9_-]{24}", code) or not store.exists(code):
             await send(ws, {"type": "error", "error": "missing"})
             return ws
-        token = start.get("token")
-        if not isinstance(token, str) or token not in room["members"]:
-            if len(room["members"]) == 2:
-                await send(ws, {"type": "error", "error": "full"})
-                return ws
-            token = secrets.token_urlsafe(24)
-            room["members"][token] = {"id": secrets.token_hex(8), "lang": start["lang"], "ws": None}
-        member = room["members"][token]
-        old = member["ws"]
-        member["ws"] = ws
+        supplied = start.get("token")
+        known = store.member(code, supplied) if isinstance(supplied, str) and len(supplied) == 32 else None
+        if known and known["removed"]:
+            await send(ws, {"type": "error", "error": "removed"})
+            return ws
+        token = supplied if known else secrets.token_urlsafe(24)
+        if not known:
+            name = start.get("name")
+            name = name.strip()[:40] if isinstance(name, str) else ""
+            known = {"id": secrets.token_hex(8), "lang": start["lang"], "name": name or "Guest",
+                     "role": "owner" if creating else "guest"}
+            store.add_member(code, token, known)
+        room = rooms.setdefault(code, {"members": {}, "captions": {}, "jobs": set(), "call": None,
+                                       "store": store, "code": code})
+        old = room["members"].get(token)
+        member = room["members"][token] = known | {"ws": ws}
         if old:
-            await old.close()
+            await old["ws"].close()
+        previous = cursor(start.get("after"))
+        messages, more = store.history(code, 0, previous, "", False)
+        current_call = room["call"]
         await send(ws, {"type": "room", "code": code, "token": token, "id": member["id"],
-                        "lang": member["lang"], "ice": ICE, "assistant": bool(os.getenv("OPENAI_API_KEY")), "call": room["call"],
-                        "messages": [clean_message(item) for item in room["messages"].values()
-                                     if item["kind"] != "phrase"]})
+                        "lang": member["lang"], "name": member["name"], "role": member["role"],
+                        "ice": ICE, "assistant": bool(os.getenv("OPENAI_API_KEY")),
+                        "call": current_call if current_call and member["id"] in current_call["members"] else None,
+                        "messages": messages, "more": more, "version": store.version(code)})
         await presence(room)
         async for packet in ws:
             if packet.type != web.WSMsgType.TEXT or member["ws"] is not ws:
@@ -254,27 +289,20 @@ async def socket(request):
                 continue
             kind = data.get("type")
             call = room["call"]
+            in_call = bool(call and member["id"] in call["members"])
             if kind == "language" and data.get("lang") in LANGS:
                 member["lang"] = data["lang"]
+                store.change_member(code, member["id"], language=member["lang"])
                 await presence(room)
-            if kind in {"reaction", "correction"}:
-                key = data.get("key")
-                item = room["messages"].get(key) if isinstance(key, str) else None
-                value = data.get("value")
-                if item and item["kind"] != "phrase" and isinstance(value, str):
-                    if kind == "reaction" and value in {"👍", "❤️", "😂", "🙌"}:
-                        reactions = item.setdefault("reactions", {})
-                        if reactions.get(member["id"]) == value:
-                            reactions.pop(member["id"])
-                        else:
-                            reactions[member["id"]] = value
-                    elif kind == "correction" and 0 < len(value.strip()) <= 300:
-                        item["correction"] = value.strip()
-                    else:
-                        continue
-                    await cast(room, {"type": "message", "message": clean_message(item)})
+            if kind in {"reaction", "correction", "edit", "delete", "pin", "report", "forward",
+                        "moderate", "resolve", "receipt"}:
+                await chat_action(request.app, room, member, ws, kind, data)
             if kind == "typing":
-                await cast(room, {"type": "typing", "active": data.get("active") is True}, token)
+                now = time.monotonic()
+                if now - member.get("typing_at", -10) >= .5:
+                    member["typing_at"] = now
+                    await cast(room, {"type": "typing", "id": member["id"], "name": member["name"],
+                                      "active": data.get("active") is True}, token)
             if kind == "preview":
                 phrase = data.get("text")
                 source = member["lang"]
@@ -290,51 +318,53 @@ async def socket(request):
                 else:
                     await send(ws, {"type": "preview", "ref": ref, "status": "later"})
             if kind == "leave":
-                del room["members"][token]
-                room["call"] = None
-                await cast(room, {"type": "call", "call": None})
-                await presence(room)
+                if in_call:
+                    room["call"] = None
+                    room["captions"].clear()
+                    await cast(room, {"type": "call", "call": None}, only=call["members"])
                 break
-            if kind == "ring" and not call and len(room["members"]) == 2 and all(
-                    m["ws"] and not m["ws"].closed for m in room["members"].values()):
-                room["call"] = {"id": secrets.token_hex(12), "caller": member["id"], "state": "ringing"}
-                await cast(room, {"type": "call", "call": room["call"]})
-            if kind == "accept" and call and call["state"] == "ringing" and call["caller"] != member["id"]:
+            active = [m["id"] for m in room["members"].values() if not m["ws"].closed]
+            if kind == "ring" and not call and len(active) == 2:
+                room["call"] = {"id": secrets.token_hex(12), "caller": member["id"], "state": "ringing",
+                                "members": active}
+                await cast(room, {"type": "call", "call": room["call"]}, only=active)
+            if kind == "accept" and in_call and call["state"] == "ringing" and call["caller"] != member["id"]:
                 call["state"] = "active"
                 call["started"] = int(time.time() * 1000)
-                await cast(room, {"type": "call", "call": call})
-            if kind == "hangup" and call:
+                await cast(room, {"type": "call", "call": call}, only=call["members"])
+            if kind == "hangup" and in_call:
                 room["call"] = None
-                for key in [key for key, item in room["messages"].items() if item["kind"] == "phrase"]:
-                    del room["messages"][key]
-                await cast(room, {"type": "call", "call": None, "reason": data.get("reason") == "declined"})
-            if kind == "signal" and call and call["state"] == "active" and call["id"] == data.get("call"):
-                await cast(room, data, token)
-            if kind in ("text", "voice", "phrase", "retry"):
+                room["captions"].clear()
+                await cast(room, {"type": "call", "call": None, "reason": data.get("reason") == "declined"},
+                           only=call["members"])
+            if kind == "signal" and in_call and call["state"] == "active" and call["id"] == data.get("call"):
+                await cast(room, data, token, only=call["members"])
+            if kind in ("text", "voice", "retry") or kind == "phrase" and in_call:
                 await handle_message(request.app, room, member, ws, kind, data)
     except (asyncio.TimeoutError, ValueError, TypeError, ConnectionError):
         pass
     finally:
-        if member and member["ws"] is ws:
-            member["ws"] = None
-            room["touched"] = time.monotonic()
+        if member and room["members"].get(token) is member:
+            del room["members"][token]
             await presence(room)
-        if room and not room["members"]:
-            ROOMS.pop(code, None)
+        if member:
+            discard_idle_room(request.app, room)
     return ws
 
 
+def discard_idle_room(app, room):
+    if not room["members"] and not room["jobs"] and app["rooms"].get(room["code"]) is room:
+        app["rooms"].pop(room["code"])
+
+
 async def handle_message(app, room, member, ws, kind, data):
-    if len(JOBS) >= 16:
-        await send(ws, {"type": "error", "error": "busy"})
-        return
     identifier = data.get("id", "")
     if not isinstance(identifier, str) or not re.fullmatch(r"[a-f0-9-]{36}", identifier):
         return
     key = f'{member["id"]}:{identifier}'
-    message = room["messages"].get(key)
+    message = room["captions"].get(key) if kind == "phrase" else find_message(room, key, kind == "retry")
     if kind == "retry":
-        if not message or message["busy"] or message["status"] == "done":
+        if not message or message.get("deleted") or key in room["jobs"] or message["status"] == "done":
             return
     else:
         if message:
@@ -354,34 +384,138 @@ async def handle_message(app, room, member, ws, kind, data):
             return
         else:
             original = ""
-        if len(room["messages"]) >= CHAT_LIMIT:
-            oldest = next((key for key, item in room["messages"].items() if not item["busy"]), None)
-            if oldest is None:
-                await send(ws, {"type": "error", "error": "busy"})
-                return
-            del room["messages"][oldest]
-            await cast(room, {"type": "remove", "key": oldest})
         message = {"key": key, "id": identifier, "sender": member["id"], "lang": member["lang"],
                    "kind": kind, "original": original.strip(), "audio": audio, "mime": mime,
+                   "sender_name": member["name"],
                    "call": call["id"] if kind == "phrase" else None, "translated": "",
                    "time": int(time.time() * 1000)}
         reply_key = data.get("reply")
-        replied = room["messages"].get(reply_key) if isinstance(reply_key, str) else None
-        if kind in {"text", "voice"} and replied and replied["kind"] != "phrase":
+        replied = find_message(room, reply_key)
+        mentions = data.get("mentions")
+        if kind == "text" and isinstance(mentions, list):
+            message["mentions"] = list(dict.fromkeys(value for value in mentions[:20]
+                                        if isinstance(value, str) and re.fullmatch(r"[a-f0-9]{16}", value)))
+        if kind in {"text", "voice"} and replied and not replied.get("deleted"):
             message["reply"] = {field: replied[field][:160] for field in ("original", "translated", "lang")}
-        room["messages"][key] = message
+    saturated = len(JOBS) + len(room["jobs"]) >= 16
+    if saturated and (kind == "phrase" or kind == "retry"):
+        await send(ws, {"type": "error", "error": "busy"})
+        return
     message.update(status="pending", busy=True)
-    await cast(room, {"type": "message", "message": clean_message(message)})
+    if kind == "phrase":
+        captions = room["captions"]
+        if len(captions) >= CAPTION_LIMIT:
+            captions.pop(next(iter(captions)))
+        captions[key] = message
+        await cast(room, {"type": "message", "message": clean_message(message)}, only=room["call"]["members"])
+    else:
+        if saturated:
+            message.update(status="translation" if kind == "text" else "transcription", busy=False)
+            await update_message(room, message)
+            return
+        room["jobs"].add(key)
+        await update_message(room, message)
     task = asyncio.create_task(process(app, room, message))
     JOBS.add(task)
     task.add_done_callback(JOBS.discard)
 
 
+async def chat_action(app, room, member, ws, kind, data):
+    store, code = room["store"], room["code"]
+    staff = member["role"] in {"owner", "moderator"}
+    if kind == "receipt":
+        last = store.latest(code)
+        delivered = min(last, cursor(data.get("delivered")))
+        store.receipt(code, member["id"], delivered, min(delivered, cursor(data.get("read"))))
+        return
+    if kind == "moderate":
+        target, operation = data.get("member"), data.get("operation")
+        if not staff or not isinstance(target, str) or target == member["id"]:
+            return
+        if operation in ("promote", "demote") and member["role"] == "owner":
+            role = "moderator" if operation == "promote" else "guest"
+            store.change_member(code, target, role=role)
+            for active in tuple(room["members"].values()):
+                if active["id"] == target:
+                    active["role"] = role
+                    await send(active["ws"], {"type": "role", "role": role})
+        elif operation == "remove":
+            target_record = store.participant(code, target)
+            if target_record and target_record["role"] == "guest":
+                store.change_member(code, target, removed=True)
+                for active in tuple(room["members"].values()):
+                    if active["id"] == target:
+                        await send(active["ws"], {"type": "error", "error": "removed"})
+                        await active["ws"].close()
+        await cast(room, {"type": "participantsChanged"}, only={m["id"] for m in room["members"].values() if m["role"] in {"owner", "moderator"}})
+        return
+    if kind == "resolve":
+        if staff:
+            store.resolve(code, cursor(data.get("report")))
+        return
+    message = find_message(room, data.get("key"))
+    if not message or message.get("deleted"):
+        return
+    own = message["sender"] == member["id"]
+    value = data.get("value")
+    if kind == "report" and isinstance(value, str) and value.strip():
+        store.report(code, member["id"], message["key"], value.strip()[:300])
+        await send(ws, {"type": "reported"})
+    elif kind == "delete" and (staff or own):
+        store.delete(code, message)
+        await cast(room, {"type": "message", "message": clean_message(message)})
+    elif kind == "pin" and staff:
+        message["pinned"] = data.get("value") is True
+        await update_message(room, message)
+    elif kind == "reaction" and value in ("👍", "❤️", "😂", "🙌"):
+        reactions = message.setdefault("reactions", {})
+        if reactions.get(member["id"]) == value:
+            reactions.pop(member["id"])
+        else:
+            reactions[member["id"]] = value
+        await update_message(room, message)
+    elif kind == "correction" and isinstance(value, str) and 0 < len(value.strip()) <= 300:
+        message["correction"] = value.strip()
+        await update_message(room, message)
+    elif kind == "edit" and own and message["kind"] == "text" and message["key"] not in room["jobs"]:
+        if isinstance(value, str) and 0 < len(value.strip()) <= 1500:
+            message.update(original=value.strip(), translated="", edited=True, status="translation")
+            await update_message(room, message)
+            await handle_message(app, room, member, ws, "retry", {"id": message["id"]})
+    elif kind == "forward":
+        dest = data.get("room")
+        dest_token = data.get("token")
+        if not isinstance(dest, str) or not isinstance(dest_token, str) or len(dest_token) != 32:
+            return
+        target = store.member(dest, dest_token)
+        if not target or target["removed"]:
+            return
+        identifier = data.get("id")
+        if not isinstance(identifier, str) or not re.fullmatch(r"[a-f0-9-]{36}", identifier):
+            return
+        key = f'{target["id"]}:{identifier}'
+        if store.message(dest, key):
+            return
+        forwarded = {field: message[field] for field in ("lang", "kind", "original", "translated", "status")}
+        forwarded.update(key=key, id=identifier, sender=target["id"], sender_name=target["name"],
+                         forwarded=True, time=int(time.time() * 1000), mime=message.get("mime", ""))
+        if message["kind"] == "media":
+            forwarded["media_bytes"] = store.binary(code, message["key"])
+        if message["kind"] == "voice":
+            forwarded["audio"] = store.binary(code, message["key"], True)
+        dest_room = app["rooms"].get(dest)
+        if dest_room:
+            await update_message(dest_room, forwarded)
+        else:
+            store.save(dest, forwarded)
+        await send(ws, {"type": "forwarded"})
+
+
 def room_access(request):
     parts = request.headers.get("Authorization", "").removeprefix("Bearer ").split(".", 1)
-    room = ROOMS.get(parts[0])
+    room = request.app["rooms"].get(parts[0])
     member = room["members"].get(parts[1]) if room and len(parts) == 2 else None
-    if not member:
+    if not member or member["ws"].closed:
         raise web.HTTPForbidden()
     return room, member
 
@@ -399,38 +533,73 @@ async def upload_media(request):
         body = await request.read()
         if room_access(request) != (room, member):
             raise web.HTTPForbidden()
-        reply = room["messages"].get(request.query.get("reply"))
-        total = sum(len(item.get("media_bytes", b"")) for active in ROOMS.values()
-                    for item in active["messages"].values())
-        if total + len(body) > MEDIA_TOTAL:
-            raise web.HTTPServiceUnavailable()
-        oldest = None
-        if len(room["messages"]) >= CHAT_LIMIT:
-            oldest = next((key for key, item in room["messages"].items() if not item["busy"]), None)
-            if oldest is None:
-                raise web.HTTPServiceUnavailable()
-            del room["messages"][oldest]
-        identifier = secrets.token_hex(16)
+        reply = find_message(room, request.query.get("reply"))
+        identifier = request.query.get("id", "")
+        if not re.fullmatch(r"[a-f0-9-]{36}", identifier):
+            raise web.HTTPBadRequest()
         key = f'{member["id"]}:{identifier}'
+        if find_message(room, key):
+            return web.json_response({"key": key})
         name = request.query.get("name", "").strip()[:120] or mime
         message = {"key": key, "id": identifier, "sender": member["id"], "lang": member["lang"],
-                   "kind": "media", "original": name, "translated": "", "mime": mime,
-                   "media_bytes": body, "time": int(time.time() * 1000), "busy": False, "status": "done"}
-        if reply and reply["kind"] != "phrase":
+                   "sender_name": member["name"], "kind": "media", "original": name,
+                   "translated": "", "mime": mime, "media_bytes": body, "time": int(time.time() * 1000),
+                   "status": "done"}
+        if reply and not reply.get("deleted"):
             message["reply"] = {field: reply[field][:160] for field in ("original", "translated", "lang")}
-        room["messages"][key] = message
-        if oldest:
-            await cast(room, {"type": "remove", "key": oldest})
-        await cast(room, {"type": "message", "message": clean_message(message)})
+        await update_message(room, message)
     return web.json_response({"key": key})
 
 
 async def fetch_media(request):
     room, _ = room_access(request)
-    message = room["messages"].get(request.match_info["key"])
-    if not message or message["kind"] != "media":
+    key = request.match_info["key"]
+    message = find_message(room, key)
+    if not message or message.get("deleted") or message["kind"] not in {"media", "voice"}:
         raise web.HTTPNotFound()
-    return web.Response(body=message["media_bytes"], content_type=message["mime"])
+    audio = message["kind"] == "voice"
+    body = room["store"].binary(room["code"], key, audio)
+    if not body:
+        raise web.HTTPNotFound()
+    mime = message["mime"].split(";", 1)[0]
+    response = web.Response(body=base64.b64decode(body) if audio else body, content_type=mime)
+    if not mime.startswith(("image/", "video/", "audio/")):
+        response.headers["Content-Disposition"] = "attachment"
+    return response
+
+
+async def history_page(request):
+    room, _ = room_access(request)
+    query = request.query
+    messages, more = room["store"].history(
+        room["code"], cursor(query.get("before")), cursor(query.get("after")),
+        query.get("q", "")[:120], query.get("media") == "1", query.get("pins") == "1")
+    return web.json_response({"messages": messages, "more": more})
+
+
+async def room_changes(request):
+    room, _ = room_access(request)
+    store, code = room["store"], room["code"]
+    through = min(cursor(request.query.get("through")), store.version(code))
+    messages, version, more = store.changes(code, cursor(request.query.get("after")), through)
+    return web.json_response({"messages": messages, "version": version, "more": more})
+
+
+async def room_details(request):
+    room, member = room_access(request)
+    store, code = room["store"], room["code"]
+    target = request.query.get("message")
+    if target:
+        item = find_message(room, target)
+        if not item:
+            raise web.HTTPNotFound()
+        return web.json_response({"seq": item["seq"]})
+    seq = cursor(request.query.get("receipt"))
+    if seq:
+        return web.json_response(store.receipt_state(code, member["id"], seq))
+    participants = store.participants(code, request.query.get("after", "")[:16])
+    reports = store.reports(code) if member["role"] in {"owner", "moderator"} else []
+    return web.json_response({"participants": participants, "reports": reports})
 
 
 async def assistant(request):
@@ -442,8 +611,8 @@ async def assistant(request):
         raise web.HTTPBadRequest()
     data = await request.json()
     key = data.get("key") if isinstance(data, dict) else None
-    item = room["messages"].get(key) if isinstance(key, str) else None
-    if not item or item["kind"] not in {"text", "voice"} or not item["original"]:
+    item = find_message(room, key)
+    if not item or item.get("deleted") or item["kind"] not in {"text", "voice"} or not item["original"]:
         raise web.HTTPBadRequest()
     now = time.monotonic()
     if now - member.get("assistant_at", -30) < 10 or request.app["ai_slots"].locked():
@@ -493,23 +662,17 @@ async def tts(request):
     return web.Response(body=wav, content_type="audio/wav", headers={"Cache-Control": "no-store"})
 
 
-async def reap():
-    while True:
-        await asyncio.sleep(15)
-        for code, room in list(ROOMS.items()):
-            if not any(member["ws"] for member in room["members"].values()):
-                if time.monotonic() - room["touched"] > ROOM_TTL:
-                    ROOMS.pop(code, None)
-
-
 async def lifecycle(app):
     app["models"] = await asyncio.to_thread(Models)
     for lang in LANGS:
         await asyncio.to_thread(synthesize, lang, "Test")
-    reaper = asyncio.create_task(reap())
     yield
-    reaper.cancel()
-    await asyncio.gather(reaper, return_exceptions=True)
+
+
+async def storage_lifecycle(app):
+    app["chat_store"] = ChatStore(app["chat_db_path"])
+    yield
+    app["chat_store"].db.close()
 
 
 @web.middleware
@@ -524,21 +687,28 @@ async def headers(request, handler):
     return response
 
 
-def create_app(load_models=True):
+def create_app(load_models=True, chat_db=None):
     app = web.Application(middlewares=[headers], client_max_size=MEDIA_LIMIT + 1)
     app["upload_slots"] = asyncio.Semaphore(2)
     app["ai_slots"] = asyncio.Semaphore(2)
     app["ai_recent"] = deque()
+    app["rooms"] = {}
+    app["chat_db_path"] = chat_db or os.getenv("CHAT_DB") or (str(ROOT / ".data/chat.sqlite3") if load_models else ":memory:")
+    app.cleanup_ctx.append(storage_lifecycle)
     if load_models:
         app.cleanup_ctx.append(lifecycle)
     assets = ROOT / "web" if (ROOT / "web").is_dir() else ROOT
     app.router.add_get("/", lambda _: web.FileResponse(assets / "index.html"))
     app.router.add_get("/ws", socket)
+    app.router.add_get("/history", history_page)
+    app.router.add_get("/changes", room_changes)
+    app.router.add_get("/room-details", room_details)
     app.router.add_post("/tts", tts)
     app.router.add_post("/media", upload_media)
     app.router.add_get("/media/{key}", fetch_media)
     app.router.add_post("/assistant", assistant)
-    for filename in ("app.js", "style.css", "vad.js"):
+    app.router.add_get("/notifications.js", lambda _: web.FileResponse(assets / "notifications.js"))
+    for filename in ("app.js", "style.css", "chat.css", "vad.js"):
         app.router.add_get(f"/assets/{filename}", lambda _, name=filename: web.FileResponse(assets / name))
     return app
 

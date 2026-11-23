@@ -1,0 +1,71 @@
+#draft {
+  box-sizing: border-box;
+  min-width: 0;
+  max-height: 9rem;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--panel);
+  color: inherit;
+  font: inherit;
+  resize: none;
+  overflow-y: auto;
+}
+
+#compose { align-items: end; }
+#typingControls:not([hidden]) { margin-bottom: 6px; }
+
+@media (max-width: 600px) {
+  body.in-room {
+    position: fixed;
+    inset: var(--chat-top, 0px) 0 auto;
+    display: flex;
+    flex-direction: column;
+    height: var(--chat-viewport, 100dvh);
+    overflow: hidden;
+  }
+  body.in-room main {
+    flex: 1 1 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    margin-block: 0;
+    padding: 4px 4px max(4px, env(safe-area-inset-bottom));
+  }
+  body.in-room .top { flex: 0 0 auto; }
+  body.typing-focus .top { display: none; }
+  body.in-room #room:not([hidden]) {
+    flex: 1 1 0;
+    height: auto;
+    min-height: 0;
+  }
+  body.in-room #messages { overscroll-behavior: contain; }
+  #draft {
+    font-size: 16px;
+    max-height: min(8rem, calc(var(--chat-viewport, 100dvh) * .28));
+  }
+  body.typing-focus #appearance,
+  body.typing-focus #callPanel,
+  body.typing-focus #chatSettings,
+  body.typing-focus #composerTools,
+  body.typing-focus #room > .room-head,
+  body.typing-focus #attach,
+  body.typing-focus #mic { display: none; }
+  body.typing-focus #compose { grid-template-columns: minmax(0, 1fr) auto; }
+}
+
+#roomDetails:not([hidden]) {
+  display: grid;
+  gap: .5rem;
+  padding: .5rem .75rem;
+  max-height: min(16rem, 30dvh);
+  overflow: auto;
+  border-block: 1px solid var(--line);
+  background: var(--panel);
+}
+.detail-row { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem; padding-block: .25rem; }
+.detail-row:first-child { padding-top: 0; }
+#older { align-self: center; margin-block: .25rem; }
+.bubble { white-space: pre-wrap; }
+@media (max-width: 600px) {
+  body.typing-focus #roomDetails { display: none; }
+}

@@ -19,11 +19,21 @@ const strings = {
     qualityWeak: "Audio unstable",
     audioReady: "Audio connected",
 
-    title:'Talk across languages.', intro:'A private room for translated messages, voice notes and live calls in English and Turkish.',
-    create:'Create a private room', inviteLabel:'Have an invite?', join:'Join room', code:'Room code or invite link',
-    room:'Private room', copy:'Copy invite', copied:'Invite copied.', leave:'Leave', call:'Call', accept:'Accept', decline:'Decline',
+    openConversation:'View in conversation', displayName:'Display name', roomDetails:'Room details', notifications:'Notifications',
+    allMessages:'All messages', mentionsOnly:'Mentions only', mutedRoom:'Mute', mediaFiles:'Media and files',
+    pinnedMessages:'Pinned messages', participants:'Participants', olderMessages:'Older messages',
+    removed:'You were removed from this room.', edited:'Edited', forwarded:'Forwarded', deleted:'Message deleted',
+    editMessage:'Edit', deleteMessage:'Delete message', pin:'Pin', unpin:'Unpin', report:'Report',
+    reported:'Report sent.', forward:'Forward', forwardRoom:'Enter a room code or link for a room you joined.',
+    receipts:'Delivery and read status', delivered:'Delivered', read:'Read', unread:'Unread messages',
+    promote:'Make moderator', demote:'Remove moderator role', removeParticipant:'Remove participant',
+    resolve:'Resolve report', more:'Load more', owner:'Owner', moderator:'Moderator', guest:'Guest',
+    mentions:'Mention someone', enterName:'Enter a display name to join.', loadError:'Could not load room data.',
+    title:'Talk across languages.', intro:'A shareable room for translated messages, voice notes and English–Turkish calls.',
+    create:'Create a room', inviteLabel:'Have an invite?', join:'Join room', code:'Room code or invite link',
+    room:'Chat room', copy:'Copy invite', copied:'Invite copied.', leave:'Leave', call:'Call', accept:'Accept', decline:'Decline',
     end:'End call', mute:'Mute', unmute:'Unmute', record:'🎙 Record', stop:'■ Stop recording', send:'Send',
-    draft:'Write a message…', footer:'Two people per room · Room history is temporary',
+    draft:'Write a message…', footer:'Anyone with the room link can read its full history.',
     waiting:'Waiting for the other person', online:'Other person connected', offline:'Other person disconnected',
     reconnect:'Reconnecting…', missed:'The call was declined.', ringing:'Calling…', incoming:'Incoming call',
     active:'Live call', connecting:'Connecting audio…', mediaFailure:'Audio connection interrupted. Reconnecting…',
@@ -32,7 +42,7 @@ const strings = {
     ready:'Listening for speech…', recording:'Recording…', translating:'Translating…', speaking:'Playing translation…',
     pending:'Processing…', transcription:'Could not transcribe the audio.', translation:'Could not translate the message.',
     retry:'Retry', show:'Show original', play:'Play translation', empty:'Invite someone or send the first message.',
-    missing:'This room is unavailable or has expired.', full:'This room already has two participants.', busy:'Server busy. Try again.',
+    missing:'This room could not be found.', full:'This room already has two participants.', busy:'Server busy. Try again.',
     secure:'Microphone access requires HTTPS or localhost.', denied:'Microphone access was denied. Allow it in browser settings and try again.',
     micError:'Microphone unavailable. Check your device and browser settings.', recordingError:'Recording failed. Try again.',
     mediaUnsupported:'This browser does not support audio recording.', autoFailure:'Automatic capture unavailable. Use push to talk.',
@@ -40,7 +50,7 @@ const strings = {
     other:'Other person', you:'You', tooLarge:'Recording too large. Try a shorter message.',
     dual:'Show both languages', previewToggle:'Preview translation', emoji:'😊 Emoji',
     faces:'Faces', gestures:'Gestures', hearts:'Hearts', extras:'Symbols',
-    typing:'Other person is typing…', previewPending:'Translating draft…',
+    typing:'Typing…', previewPending:'Translating draft…',
     previewLater:'Preview waits until the call or current translation finishes.',
     messageLabel:'Message', captions:'Call captions', chat:'Messages',
   },
@@ -66,9 +76,19 @@ const strings = {
 
     title:'Farklı dillerde sohbet edin.', intro:'İngilizce ve Türkçe mesajlar, sesli notlar ve canlı aramalar için özel bir oda.',
     create:'Özel oda oluştur', inviteLabel:'Davetiniz var mı?', join:'Odaya katıl', code:'Oda kodu veya davet bağlantısı',
-    room:'Özel oda', copy:'Daveti kopyala', copied:'Davet kopyalandı.', leave:'Ayrıl', call:'Ara', accept:'Kabul et', decline:'Reddet',
+    openConversation:'Konuşmada göster', displayName:'Görünen ad', roomDetails:'Oda ayrıntıları', notifications:'Bildirimler',
+    allMessages:'Tüm mesajlar', mentionsOnly:'Yalnızca bahsetmeler', mutedRoom:'Sessiz', mediaFiles:'Medya ve dosyalar',
+    pinnedMessages:'Sabitlenen mesajlar', participants:'Katılımcılar', olderMessages:'Eski mesajlar',
+    removed:'Odadan çıkarıldınız.', edited:'Düzenlendi', forwarded:'İletildi', deleted:'Mesaj silindi',
+    editMessage:'Düzenle', deleteMessage:'Mesajı sil', pin:'Sabitle', unpin:'Sabitlemeyi kaldır', report:'Bildir',
+    reported:'Bildirim gönderildi.', forward:'İlet', forwardRoom:'Katıldığınız odanın kodunu veya bağlantısını girin.',
+    receipts:'Teslim ve okunma durumu', delivered:'Teslim edildi', read:'Okundu', unread:'Okunmamış mesajlar',
+    promote:'Moderatör yap', demote:'Moderatör rolünü kaldır', removeParticipant:'Katılımcıyı çıkar',
+    resolve:'Bildirimi kapat', more:'Daha fazla', owner:'Kurucu', moderator:'Moderatör', guest:'Misafir',
+    mentions:'Birinden bahset', enterName:'Katılmak için görünen adınızı girin.', loadError:'Oda verileri yüklenemedi.',
+    room:'Sohbet odası', copy:'Daveti kopyala', copied:'Davet kopyalandı.', leave:'Ayrıl', call:'Ara', accept:'Kabul et', decline:'Reddet',
     end:'Aramayı bitir', mute:'Sesi kapat', unmute:'Sesi aç', record:'🎙 Kaydet', stop:'■ Kaydı durdur', send:'Gönder',
-    draft:'Mesaj yazın…', footer:'Oda iki kişiliktir · Oda geçmişi geçicidir',
+    draft:'Mesaj yazın…', footer:'Oda bağlantısına sahip herkes tüm geçmişi okuyabilir.',
     waiting:'Diğer kişi bekleniyor', online:'Diğer kişi bağlandı', offline:'Diğer kişinin bağlantısı kesildi',
     reconnect:'Yeniden bağlanıyor…', missed:'Arama reddedildi.', ringing:'Aranıyor…', incoming:'Gelen arama',
     active:'Canlı arama', connecting:'Ses bağlantısı kuruluyor…', mediaFailure:'Ses bağlantısı kesildi. Yeniden bağlanıyor…',
@@ -85,7 +105,7 @@ const strings = {
     other:'Diğer kişi', you:'Siz', tooLarge:'Kayıt çok büyük. Daha kısa bir mesaj deneyin.',
     dual:'İki dili göster', previewToggle:'Çeviriyi önizle', emoji:'😊 Emoji',
     faces:'Yüzler', gestures:'Hareketler', hearts:'Kalpler', extras:'Simgeler',
-    typing:'Diğer kişi yazıyor…', previewPending:'Taslak çevriliyor…',
+    typing:'Yazıyor…', previewPending:'Taslak çevriliyor…',
     previewLater:'Önizleme, arama veya mevcut çeviri bitince kullanılabilir.',
     messageLabel:'Mesaj', captions:'Arama altyazıları', chat:'Mesajlar',
   },
@@ -115,7 +135,13 @@ let language = localStorage.getItem('connect-language') === 'tr' ? 'tr' : 'en';
 const t = key => strings[language][key] || key;
 const otherLanguage = lang => lang === 'en' ? 'tr' : 'en';
 let assistantEnabled = false;
-let attachment = null;
+let roomRole, onlineCount = 0, olderCursor = 0, hasOlder = false, newest = 0;
+let historyBusy = false, searchTimer, searchResults = null, detailMode = '', unreadCount = 0;
+let historyVersion = 0, receiptRead = 0, notificationMode = 'all';
+const attachmentIds = new WeakMap();
+const pending = new Map();
+const remoteTypers = new Map();
+let attachment = null, uploading = false;
 let ws, room, id, token, ice, reconnectTimer, peerMember, joined = false;
 let noticeKey = '', callNoticeKey = '', recordKey = '';
 let call, pc, generation, candidates = new Map(), callMic, audioContext, worklet;
@@ -127,7 +153,7 @@ const speechQueue = [];
 const peerAudio = $('peerAudio'), spokenAudio = $('spokenAudio');
 let activeSpeechCancel;
 let speechIdle;
-let previewRef = 0, draftTimer, typingTimer, remoteTypingTimer;
+let previewRef = 0, draftTimer, typingTimer;
 let emojiGroup = 'faces';
 const emojiGroups = {
   recent: '',
@@ -163,7 +189,55 @@ function drawEmoji() {
     }));
   }
 }
+const mobileComposer = matchMedia('(max-width: 600px)');
+const draftField = $('draft');
+const typingControls = $('typingControls');
+let controlsRestored = false;
+
+function resizeComposer() {
+  draftField.style.height = '';
+  if (draftField.scrollHeight > draftField.clientHeight) {
+    draftField.style.height = draftField.scrollHeight + draftField.offsetHeight - draftField.clientHeight + 'px';
+  }
+}
+
+function layoutComposer() {
+  const viewport = window.visualViewport;
+  const height = viewport?.height ?? window.innerHeight;
+  document.body.style.setProperty('--chat-viewport', height + 'px');
+  document.body.style.setProperty('--chat-top', (viewport?.offsetTop ?? 0) + 'px');
+  const mobile = mobileComposer.matches && document.body.classList.contains('in-room');
+  const collapsed = mobile && !controlsRestored && document.activeElement === draftField;
+  document.body.classList.toggle('typing-focus', collapsed);
+  typingControls.hidden = !mobile || (!collapsed && !controlsRestored);
+  typingControls.setAttribute('aria-expanded', String(!collapsed));
+  typingControls.textContent = language === 'tr'
+    ? (collapsed ? 'Kontrolleri göster' : 'Yazmaya dön')
+    : (collapsed ? 'Show controls' : 'Return to typing');
+  resizeComposer();
+}
+
+typingControls.addEventListener('pointerdown', event => event.preventDefault());
+typingControls.addEventListener('click', () => {
+  controlsRestored = document.body.classList.contains('typing-focus');
+  if (!controlsRestored) draftField.focus({preventScroll: true});
+  layoutComposer();
+});
+draftField.addEventListener('focus', () => {
+  controlsRestored = false;
+  layoutComposer();
+});
+draftField.addEventListener('blur', layoutComposer);
+$('send').addEventListener('pointerdown', event => {
+  if (document.body.classList.contains('typing-focus')) event.preventDefault();
+});
+mobileComposer.addEventListener('change', layoutComposer);
+window.addEventListener('resize', layoutComposer);
+window.visualViewport?.addEventListener('resize', layoutComposer);
+window.visualViewport?.addEventListener('scroll', layoutComposer);
+
 function updateDraft(announce = true) {
+  resizeComposer();
   const ref = ++previewRef;
   clearTimeout(draftTimer);
   clearTimeout(typingTimer);
@@ -187,10 +261,17 @@ function updateDraft(announce = true) {
     if (!send({type:'preview', text, ref})) box.textContent = t('disconnected');
   }, 750);
 }
-function showTyping(active) {
-  clearTimeout(remoteTypingTimer);
-  $('typingStatus').textContent = active ? t('typing') : '';
-  if (active) remoteTypingTimer = setTimeout(() => showTyping(false), 3000);
+function showTyping(active, member, name) {
+  if (!member) {
+    for (const entry of remoteTypers.values()) clearTimeout(entry.timer);
+    remoteTypers.clear();
+  } else {
+    clearTimeout(remoteTypers.get(member)?.timer);
+    if (active) remoteTypers.set(member, {name, timer:setTimeout(() => showTyping(false, member), 3500)});
+    else remoteTypers.delete(member);
+  }
+  const names = [...remoteTypers.values()].map(entry => entry.name).slice(0, 3);
+  $('typingStatus').textContent = names.length ? names.join(', ') + ' · ' + t('typing') : '';
 }
 
 
@@ -234,14 +315,15 @@ function labelUI() {
   $('emojiSearch').placeholder = t('emojiSearch');
   $('emojiSearch').setAttribute('aria-label', t('emojiSearch'));
   $('copy').textContent = t('share');
+  layoutComposer();
   drawEmoji();
   drawQuick();
   updateDraft(false);
 }
 function drawPresence() {
-  $('presence').textContent = t(!online() ? 'reconnect' : peerMember?.online ? 'online' : peerMember ? 'offline' : 'waiting');
-  $('call').disabled = !online() || !peerMember?.online || !!call;
-  $('send').disabled = !online();
+  $('presence').textContent = !online() ? t('reconnect') : onlineCount + ' · ' + t('online') + (unreadCount ? ' · ' + unreadCount + ' ' + t('unread') : '');
+  $('call').disabled = !online() || onlineCount !== 2 || !peerMember?.online || !!call;
+  $('send').disabled = !room || uploading || Boolean(attachment && !online());
 }
 function drawRecord() {
   $('mic').disabled = openingRecorder || (!online() && !recording) || (recording && recording.kind !== 'voice');
@@ -284,19 +366,28 @@ function messageRow(message, caption) {
   const own = message.sender === id;
   const row = element(caption ? 'p' : 'article', '', caption ? '' : 'bubble' + (own ? ' mine' : ''));
   row.dataset.key = message.key;
+  if (message.seq) row.dataset.seq = message.seq;
   if (!caption) {
     const query = $('search').value.trim().toLocaleLowerCase(language);
-    row.hidden = Boolean(query && ![message.original, message.translated, message.correction].some(value => value?.toLocaleLowerCase(language).includes(query)));
+    row.hidden = Boolean(!searchResults && query && ![message.original, message.translated, message.correction].some(value => value?.toLocaleLowerCase(language).includes(query)));
   }
   if (!caption) {
     const time = Number.isFinite(message.time) ? ' · ' +
       new Intl.DateTimeFormat(language, {hour:'numeric', minute:'2-digit'}).format(message.time) : '';
-    row.append(element('small', t(own ? 'you' : 'other') + time));
+    row.append(element('small', (own ? t('you') : message.sender_name || t('other')) + time));
+    if (message.deleted) {
+      row.append(element('div', t('deleted')));
+      return row;
+    }
+    if (message.pinned || message.edited || message.forwarded) {
+      row.append(element('small', [message.pinned && t('pinnedMessages'), message.edited && t('edited'),
+        message.forwarded && t('forwarded')].filter(Boolean).join(' · ')));
+    }
     if (message.reply) row.append(element('blockquote', messageText(message.reply)));
     const body = element('div');
     linkText(body, messageText(message));
     row.append(body);
-    if (message.kind === 'media') row.append(mediaButton(message));
+    if (['media', 'voice'].includes(message.kind)) row.append(mediaButton(message));
   } else {
     row.append(element('strong', t(own ? 'you' : 'other') + ' · '), document.createTextNode(messageText(message)));
   }
@@ -316,22 +407,10 @@ function messageRow(message, caption) {
     second.lang = message.lang === language ? otherLanguage(language) : message.lang;
     row.append(second);
   }
-  if (!caption && (message.audio || (!showSecondary && secondary && secondary !== messageText(message)))) {
+  if (!caption && !showSecondary && secondary && secondary !== messageText(message)) {
     const details = element('details');
-    details.append(element('summary', t(message.audio || message.lang !== language ? 'show' : 'translated')));
-    const detailText = message.audio ? message.original : secondary;
-    if (detailText) details.append(element('div', detailText));
-    if (message.audio) {
-      const audio = element('audio');
-      audio.controls = true;
-      audio.preload = 'none';
-      if (!originals.has(message.key)) {
-        const bytes = Uint8Array.from(atob(message.audio), char => char.charCodeAt(0));
-        originals.set(message.key, URL.createObjectURL(new Blob([bytes], {type:message.mime})));
-      }
-      audio.src = originals.get(message.key);
-      details.append(audio);
-    }
+    details.append(element('summary', t(message.lang !== language ? 'show' : 'translated')));
+    details.append(element('div', secondary));
     row.append(details);
   }
   if (!caption) {
@@ -341,6 +420,32 @@ function messageRow(message, caption) {
     const reply = action('reply', () => setReply(message));
     reply.className = 'direct-reply';
     row.append(reply);
+    if (own && message.kind === 'text') options.append(action('editMessage', () => {
+      const value = window.prompt(t('editMessage'), message.original);
+      if (value?.trim()) send({type:'edit', key:message.key, value});
+    }));
+    if (own || isStaff()) options.append(action('deleteMessage', () => {
+      if (window.confirm(t('deleteMessage') + '?')) send({type:'delete', key:message.key});
+    }));
+    if (isStaff()) options.append(action(message.pinned ? 'unpin' : 'pin', () =>
+      send({type:'pin', key:message.key, value:!message.pinned})));
+    if (!own) options.append(action('report', () => {
+      const value = window.prompt(t('report'));
+      if (value?.trim()) send({type:'report', key:message.key, value});
+    }));
+    options.append(action('forward', () => {
+      const destination = parseRoom(window.prompt(t('forwardRoom')) || '');
+      const targetToken = destination && roomToken(destination);
+      if (targetToken) send({type:'forward', key:message.key, room:destination,
+        token:targetToken, id:crypto.randomUUID()});
+      else notice('missing');
+    }));
+    if (own) options.append(action('receipts', async () => {
+      try {
+        const result = await roomGet('/room-details', {receipt:message.seq});
+        window.alert(t('delivered') + ' ' + result.delivered + ' · ' + t('read') + ' ' + result.read);
+      } catch { notice('loadError'); }
+    }));
     if (!own && assistantEnabled && message.original && ['text', 'voice'].includes(message.kind))
       options.append(action('aiReply', () => draftReply(message)));
     if (message.original) options.append(action('copyOriginal', () => copyText(message.original)));
@@ -368,14 +473,16 @@ function putRow(list, message, caption) {
     old.replaceWith(row);
   } else {
     list.querySelector('.empty')?.remove();
-    list.append(row);
-    list.scrollTop = list.scrollHeight;
+    const atEnd = list.scrollHeight - list.clientHeight - list.scrollTop < 75;
+    const following = caption ? null : [...list.children].find(item => Number(item.dataset.seq) > message.seq);
+    list.insertBefore(row, following || null);
+    if (atEnd && !following) list.scrollTop = list.scrollHeight;
   }
 }
 function drawMessages() {
   $('messages').replaceChildren();
-  for (const message of messages.values()) putRow($('messages'), message, false);
-  if (!messages.size) $('messages').append(element('p', t('empty'), 'empty'));
+  for (const message of [...(searchResults || messages).values()].sort((a, b) => a.seq - b.seq)) putRow($('messages'), message, false);
+  if (!(searchResults || messages).size) $('messages').append(element('p', t(searchResults ? 'noResults' : 'empty'), 'empty'));
   else if (![...$('messages').children].some(row => !row.hidden)) $('messages').append(element('p', t('noResults'), 'empty'));
   $('captions').replaceChildren();
   for (const message of phrases.values()) putRow($('captions'), message, true);
@@ -405,8 +512,28 @@ function storeMessage(message) {
     }
     if (pc?.connectionState === 'connected') reflectCapture();
   } else {
+    if (message.deleted && originals.has(message.key)) {
+      URL.revokeObjectURL(originals.get(message.key));
+      originals.delete(message.key);
+    }
+    const fresh = !messages.has(message.key) && message.seq > newest;
     messages.set(message.key, message);
-    putRow($('messages'), message, false);
+    acknowledge(message);
+    newest = Math.max(newest, message.seq);
+    if (!searchResults) putRow($('messages'), message, false);
+    if (fresh && message.sender !== id) {
+      if (document.hidden || !atLatest()) {
+        unreadCount++;
+        drawPresence();
+      }
+      const mentioned = message.mentions?.includes(id);
+      if (document.hidden && notificationMode !== 'mute' && (notificationMode === 'all' || mentioned)
+          && window.Notification?.permission === 'granted') {
+        notifyRoom(message, mentioned);
+      }
+    }
+    sendReceipt();
+
   }
 }
 
@@ -421,15 +548,20 @@ function connect(type, code) {
   $('join').querySelector('button').disabled = true;
   let rejected = false;
   connection.onopen = () => connection.send(JSON.stringify({
-    type, code, lang:language, token:code ? sessionStorage.getItem('connect:' + code) : null,
+    type, code, lang:language, token:code ? roomToken(code) : null,
+    name:$('displayName').value.trim(), after:code === room ? newest : 0,
   }));
   connection.onmessage = ({data}) => {
     if (connection !== ws) return;
     enableLobby();
     const event = JSON.parse(data);
     if (event.type === 'room') {
-      ({code:room, id, token, ice, lang:language} = event);
-      sessionStorage.setItem('connect:' + room, token);
+      const sameRoom = room === event.code;
+      ({code:room, id, token, ice, lang:language, role:roomRole} = event);
+      localStorage.setItem('connect:' + room, token);
+      localStorage.setItem('connect-name', event.name);
+      notificationMode = localStorage.getItem('connect-notifications:' + room) || 'all';
+      $('notifications').value = notificationMode;
       history.replaceState(null, '', '#room=' + room);
       joined = true;
       assistantEnabled = event.assistant === true;
@@ -437,14 +569,33 @@ function connect(type, code) {
       $('lobby').hidden = true;
       $('room').hidden = false;
       changeWallpaper();
-      for (const key of messages.keys()) removeMessage(key);
-      for (const message of event.messages) messages.set(message.key, message);
+      if (!sameRoom) {
+        for (const key of messages.keys()) removeMessage(key);
+        hasOlder = event.more;
+        olderCursor = event.messages[0]?.seq || 0;
+      }
+      for (const message of event.messages) {
+        messages.set(message.key, message);
+        acknowledge(message);
+        newest = Math.max(newest, message.seq);
+      }
+      showOlder();
+      sendReceipt();
+      if (sameRoom) {
+        recoverHistory(event.messages.at(-1)?.seq || newest, event.more, connection, event.version);
+      } else {
+        historyVersion = event.version;
+      }
+
+      flushPending();
       labelUI();
+      layoutComposer();
       notice('');
       updateCall(event.call);
     } else if (event.type === 'presence') {
       const previous = peerMember?.online;
-      peerMember = event.members.find(member => member.id !== id);
+      onlineCount = event.count;
+      peerMember = event.members.find(member => member.id !== id && (!call || call.members.includes(member.id)));
       drawPresence();
       if (call?.state === 'active') {
         if (!peerMember?.online) {
@@ -454,7 +605,10 @@ function connect(type, code) {
           queueSignal(() => startOffer());
         }
       }
-    } else if (event.type === 'typing') showTyping(event.active);
+    } else if (event.type === 'typing') showTyping(event.active, event.id, event.name);
+    else if (event.type === 'role') { roomRole = event.role; drawMessages(); }
+    else if (event.type === 'reported' || event.type === 'forwarded') notice(event.type);
+    else if (event.type === 'participantsChanged' && !$('roomDetails').hidden && detailMode === 'participants') showParticipants();
     else if (event.type === 'preview' && event.ref === previewRef) {
       $('preview').textContent = event.status === 'done' ? event.text :
         t(event.status === 'later' ? 'previewLater' : event.status);
@@ -466,7 +620,7 @@ function connect(type, code) {
       if (event.reason) notice('missed');
     } else if (event.type === 'signal') queueSignal(() => handleSignal(event));
     else if (event.type === 'error') {
-      if (!joined) {
+      if (!joined || event.error === 'removed') {
         rejected = true;
         resetRoom();
       }
@@ -481,6 +635,7 @@ function connect(type, code) {
     closePeer();
     drawPresence();
     drawRecord();
+    showTyping(false);
     if (call) callNotice('reconnect');
     if (room) reconnectTimer = setTimeout(() => connect('join', room), 950);
     else notice('disconnected');
@@ -492,6 +647,8 @@ function enableLobby() {
 }
 function resetRoom() {
   document.body.classList.remove('in-room');
+  controlsRestored = false;
+  layoutComposer();
   selectAttachment(null);
   upgradeStatus('');
 
@@ -500,7 +657,14 @@ function resetRoom() {
   ws = null;
   previous?.close();
   clearTimeout(reconnectTimer);
-  if (room) sessionStorage.removeItem('connect:' + room);
+  olderCursor = newest = historyVersion = receiptRead = unreadCount = onlineCount = 0;
+  hasOlder = false;
+  searchResults = null;
+  if (room) pending.clear();
+  draftMentions.clear();
+  $('roomDetails').hidden = true;
+  $('detailsToggle').setAttribute('aria-expanded', 'false');
+  showOlder();
   room = id = token = peerMember = null;
   joined = false;
   updateCall(null);
@@ -776,7 +940,8 @@ async function sendAudio(kind, blob, callId) {
   for (let index = 0; index < bytes.length; index += 8192)
     binary += String.fromCharCode(...bytes.subarray(index, index + 8192));
   if (kind === 'phrase' && call?.id !== callId) return;
-  if (!send({type:kind, id:crypto.randomUUID(), mime:blob.type, audio:btoa(binary), call:callId,
+  const transmit = kind === 'voice' ? queueMessage : send;
+  if (!transmit({type:kind, id:crypto.randomUUID(), mime:blob.type, audio:btoa(binary), call:callId,
     reply:kind === 'voice' ? replyTo?.key : undefined}))
     notice('disconnected');
   else if (kind === 'voice') setReply(null);
@@ -1089,7 +1254,262 @@ changeWallpaper();
 setInterval(() => {
   if ($('wallpaper').value === 'auto' && !document.hidden && !call) changeWallpaper();
 }, 45000);
-$('search').oninput = drawMessages;
+function isStaff() {
+  return roomRole === 'owner' || roomRole === 'moderator';
+}
+function parseRoom(value) {
+  return value.trim().match(/(?:^|#room=)([A-Za-z0-9_-]{24})$/)?.[1];
+}
+function roomToken(code) {
+  return localStorage.getItem('connect:' + code) || sessionStorage.getItem('connect:' + code);
+}
+function enterRoom(type, code) {
+  if ((type === 'create' || !roomToken(code)) && !$('displayName').value.trim()) {
+    notice('enterName');
+    $('displayName').focus();
+    return;
+  }
+  notice('');
+  connect(type, code);
+}
+function queueMessage(payload) {
+  if (!room) return false;
+  pending.set(payload.id, payload);
+  send(payload);
+  return true;
+}
+function flushPending() {
+  for (const payload of pending.values()) send(payload);
+}
+function acknowledge(message) {
+  if (message.sender === id) pending.delete(message.id);
+}
+function atLatest() {
+  const list = $('messages');
+  return !searchResults && list.scrollHeight - list.scrollTop - list.clientHeight < 75;
+}
+let receiptTimer;
+function sendReceipt() {
+  clearTimeout(receiptTimer);
+  receiptTimer = setTimeout(() => {
+    if (!newest || !online()) return;
+    if (!document.hidden && atLatest()) {
+      receiptRead = newest;
+      unreadCount = 0;
+      drawPresence();
+    }
+    send({type:'receipt', delivered:newest, read:receiptRead});
+  }, 250);
+}
+document.addEventListener('visibilitychange', sendReceipt);
+$('messages').addEventListener('scroll', () => {
+  const list = $('messages');
+  if (atLatest()) sendReceipt();
+  if (list.scrollTop < 24 && list.scrollHeight > list.clientHeight) loadOlder();
+});
+
+async function roomGet(path, parameters = {}) {
+  const currentRoom = room;
+  const response = await fetch(path + '?' + new URLSearchParams(parameters), {headers:roomHeaders()});
+  if (!response.ok || room !== currentRoom) throw new Error('Room request failed');
+  return response.json();
+}
+function showOlder() {
+  $('older').hidden = !hasOlder || Boolean(searchResults);
+}
+async function loadOlder() {
+  if (!online() || !hasOlder || historyBusy || searchResults) return;
+  historyBusy = true;
+  const list = $('messages');
+  try {
+    const page = await roomGet('/history', {before:olderCursor});
+    const height = list.scrollHeight;
+    const top = list.scrollTop;
+    olderCursor = page.messages[0]?.seq || olderCursor;
+    hasOlder = page.more;
+    for (const message of page.messages) {
+      if (messages.has(message.key)) continue;
+      messages.set(message.key, message);
+      if (!searchResults) putRow(list, message, false);
+    }
+    if (!searchResults) list.scrollTop = top + list.scrollHeight - height;
+    showOlder();
+  } catch { notice('loadError'); }
+  finally { historyBusy = false; }
+}
+$('older').onclick = loadOlder;
+async function recoverHistory(after, more, connection, version) {
+  try {
+    while (more && ws === connection && online()) {
+      const page = await roomGet('/history', {after});
+      if (ws !== connection) return;
+      for (const message of page.messages) if (!messages.has(message.key)) storeMessage(message);
+      after = page.messages.at(-1)?.seq || after;
+      more = page.more;
+    }
+    let moreChanges = historyVersion < version;
+    let changesCursor = historyVersion;
+    while (moreChanges && ws === connection && online()) {
+      const changes = await roomGet('/changes', {after:changesCursor, through:version});
+      if (ws !== connection) return;
+      for (const message of changes.messages) {
+        if (messages.has(message.key) || message.seq > after) storeMessage(message);
+      }
+      changesCursor = changes.version;
+      moreChanges = changes.more;
+    }
+    if (ws === connection && online()) historyVersion = version;
+    sendReceipt();
+  } catch { if (ws === connection) connection.close(); }
+}
+
+function scheduleSearch() {
+  clearTimeout(searchTimer);
+  const query = $('search').value.trim();
+  if (!query) {
+    searchResults = null;
+    drawMessages();
+    showOlder();
+    return;
+  }
+  searchTimer = setTimeout(() => searchRoom(query), 275);
+  if (detailMode === 'media') showFiles('media');
+}
+let searchGeneration = 0;
+async function searchRoom(query, before = 0) {
+  const generation = ++searchGeneration;
+  try {
+    const page = await roomGet('/history', {q:query, before});
+    if (query !== $('search').value.trim() || generation !== searchGeneration) return;
+    if (!before) searchResults = new Map();
+    for (const message of page.messages) searchResults.set(message.key, message);
+    drawMessages();
+    showOlder();
+    for (const row of $('messages').querySelectorAll('[data-key]')) {
+      row.append(action('openConversation', () => jumpToMessage(Number(row.dataset.seq))));
+    }
+    if (page.more) $('messages').prepend(action('more', () => searchRoom(query, page.messages[0].seq)));
+  } catch { notice('loadError'); }
+}
+
+async function jumpToMessage(seq) {
+  try {
+    const page = await roomGet('/history', {before:seq + 1});
+    for (const message of page.messages) messages.set(message.key, message);
+    $('search').value = '';
+    searchResults = null;
+    olderCursor = Math.min(olderCursor || Infinity, page.messages[0]?.seq || seq);
+    hasOlder = page.more || hasOlder;
+    drawMessages();
+    showOlder();
+    $('messages').querySelector('[data-seq="' + seq + '"]')?.scrollIntoView({block:'nearest'});
+  } catch { notice('loadError'); }
+}
+
+$('detailsToggle').onclick = () => {
+  const panel = $('roomDetails');
+  panel.hidden = !panel.hidden;
+  $('detailsToggle').setAttribute('aria-expanded', String(!panel.hidden));
+  if (!panel.hidden) showParticipants();
+};
+async function notifyRoom(message, mentioned) {
+  const title = message.sender_name || t('room');
+  const options = {body:t(mentioned ? 'mentions' : 'unread'), tag:'learn-chat:' + room,
+    data:{url:location.href}};
+  try {
+    if ('serviceWorker' in navigator) {
+      const registration = await navigator.serviceWorker.register('/notifications.js');
+      await registration.showNotification(title, options);
+    } else {
+      new Notification(title, options);
+    }
+  } catch { /* Browser notification permission or support can change. */ }
+}
+
+$('notifications').onchange = async () => {
+  notificationMode = $('notifications').value;
+  localStorage.setItem('connect-notifications:' + room, notificationMode);
+  if (notificationMode !== 'mute' && window.Notification?.permission === 'default') {
+    await Notification.requestPermission();
+  }
+};
+$('participantsToggle').onclick = () => showParticipants();
+$('mediaToggle').onclick = () => showFiles('media');
+$('pinsToggle').onclick = () => showFiles('pins');
+const draftMentions = new Map();
+function selectedMentions(value) {
+  return [...draftMentions].filter(([, name]) => value.includes('@' + name)).map(([key]) => key);
+}
+async function showParticipants(after = '') {
+  detailMode = 'participants';
+  try {
+    const {participants, reports} = await roomGet('/room-details', {after});
+    if (detailMode !== 'participants') return;
+    const list = $('roomDetailsList');
+    if (!after) list.replaceChildren();
+    for (const person of participants) {
+      const row = element('div', '', 'detail-row');
+      row.append(element('span', person.name + ' · ' + t(person.role)));
+      if (!person.removed && person.id !== id) row.append(action('mentions', () => {
+        const input = $('draft');
+        const tag = '@' + person.name + ' ';
+        if (input.value.length + tag.length > input.maxLength) return;
+        draftMentions.set(person.id, person.name);
+        input.setRangeText(tag, input.selectionStart, input.selectionEnd, 'end');
+        input.focus();
+        updateDraft();
+      }));
+      if (roomRole === 'owner' && !person.removed && person.role !== 'owner') {
+        const isModerator = person.role === 'moderator';
+        row.append(action(isModerator ? 'demote' : 'promote', () => moderate(person, isModerator ? 'demote' : 'promote')));
+      }
+      if (isStaff() && person.role === 'guest' && !person.removed) {
+        row.append(action('removeParticipant', () => {
+          if (window.confirm(t('removeParticipant') + '?')) moderate(person, 'remove');
+        }));
+      }
+      list.append(row);
+    }
+    if (!after) for (const report of reports) {
+      const row = element('div', '', 'detail-row');
+      row.append(element('span', t('report') + ' · ' + report.reason));
+      row.append(action('openConversation', async () => {
+        const item = await roomGet('/room-details', {message:report.message}).catch(() => null);
+        if (item?.seq) jumpToMessage(item.seq);
+      }));
+      row.append(action('resolve', () => { send({type:'resolve', report:report.id}); row.remove(); }));
+      list.append(row);
+    }
+    if (participants.length === 50) list.append(action('more', event => {
+      event.currentTarget.remove();
+      showParticipants(participants.at(-1).id);
+    }));
+  } catch { notice('loadError'); }
+}
+function moderate(person, operation) {
+  send({type:'moderate', member:person.id, operation});
+}
+async function showFiles(mode, before = 0) {
+  detailMode = mode;
+  if (!before) $('roomDetailsList').replaceChildren();
+  try {
+    const page = await roomGet('/history', {before, [mode]:1, q:mode === 'media' ? $('search').value.trim() : ''});
+    if (detailMode !== mode) return;
+    const list = $('roomDetailsList');
+    for (const message of page.messages.slice().reverse()) {
+      const row = element('div', '', 'detail-row');
+      row.append(element('span', message.original || message.sender_name));
+      if (mode === 'media') row.append(mediaButton(message));
+      row.append(action('openConversation', () => jumpToMessage(message.seq)));
+      list.append(row);
+    }
+    if (page.more) list.append(action('more', event => {
+      event.currentTarget.remove();
+      showFiles(mode, page.messages[0].seq);
+    }));
+  } catch { notice('loadError'); }
+}
+$('search').oninput = scheduleSearch;
 $('emojiSearch').oninput = drawEmoji;
 $('cancelReply').onclick = () => setReply(null);
 function drawCallTime() {
@@ -1115,14 +1535,13 @@ $('locale').onchange = () => {
   send({type:'language', lang:language});
   labelUI();
 };
-$('create').onclick = () => { notice(''); connect('create'); };
+$('create').onclick = () => enterRoom('create');
 $('join').onsubmit = event => {
   event.preventDefault();
   const value = $('code').value.trim();
-  const code = value.match(/(?:^|#room=)([A-Za-z0-9_-]{24})$/)?.[1];
+  const code = parseRoom(value);
   if (!code) return notice('missing');
-  notice('');
-  connect('join', code);
+  enterRoom('join', code);
 };
 $('copy').onclick = async () => {
   try {
@@ -1156,6 +1575,7 @@ function selectAttachment(file) {
   attachment = file;
   $('attachment').hidden = !file;
   $('attachmentName').textContent = file?.name || '';
+  drawPresence();
 }
 $('attach').onclick = () => $('mediaFile').click();
 $('cancelAttachment').onclick = () => selectAttachment(null);
@@ -1171,7 +1591,8 @@ async function shareAttachment() {
   const file = attachment;
   const currentRoom = room;
   const reply = replyTo?.key;
-  const params = new URLSearchParams({name:file.name});
+  if (!attachmentIds.has(file)) attachmentIds.set(file, crypto.randomUUID());
+  const params = new URLSearchParams({name:file.name, id:attachmentIds.get(file)});
   if (reply) params.set('reply', reply);
   upgradeStatus('uploading');
   try {
@@ -1197,15 +1618,19 @@ function mediaButton(message) {
       if (!button.isConnected) return;
       const src = originals.get(message.key) || URL.createObjectURL(blob);
       originals.set(message.key, src);
-      const media = element(message.mime.startsWith('image/') ? 'img' : 'video', '', 'chat-media');
-      media.alt = message.original;
-      media.controls = true;
-      media.playsInline = true;
-      media.src = src;
+      const tag = message.mime.startsWith('image/') ? 'img' : message.mime.startsWith('audio/') ? 'audio' :
+        message.mime.startsWith('video/') ? 'video' : null;
+      const media = tag && element(tag, '', 'chat-media');
+      if (media) {
+        media.alt = message.original;
+        media.controls = true;
+        media.playsInline = true;
+        media.src = src;
+      }
       const download = element('a', message.original);
       download.href = src;
       download.download = message.original;
-      button.replaceWith(media, download);
+      button.replaceWith(...(media ? [media, download] : [download]));
     } catch {
       upgradeStatus('uploadError');
       button.disabled = false;
@@ -1262,14 +1687,18 @@ $('compose').onsubmit = async event => {
   event.preventDefault();
   if ($('send').disabled) return;
   if (attachment) {
-    $('send').disabled = true;
+    if (!online()) return;
+    uploading = true;
+    drawPresence();
     try { await shareAttachment(); } catch { return; }
-    finally { $('send').disabled = false; }
+    finally { uploading = false; drawPresence(); }
     return;
   }
   const text = $('draft').value.trim();
-  if (text && send({type:'text', id:crypto.randomUUID(), text, reply:replyTo?.key})) {
+  if (text && queueMessage({type:'text', id:crypto.randomUUID(), text, reply:replyTo?.key,
+    mentions:selectedMentions(text)})) {
     $('draft').value = '';
+    draftMentions.clear();
     $('emojiPicker').open = false;
     setReply(null);
     updateDraft();
@@ -1318,9 +1747,11 @@ $('capture').onchange = () => {
   drawCall();
 };
 window.addEventListener('pagehide', () => { ws?.close(); callMic?.getTracks().forEach(track => track.stop()); });
+  $('displayName').value = localStorage.getItem('connect-name') || '';
 labelUI();
 const invite = location.hash.match(/^#room=([A-Za-z0-9_-]{24})$/)?.[1];
 if (invite) {
   $('code').value = invite;
-  if (sessionStorage.getItem('connect:' + invite)) connect('join', invite);
+  if (roomToken(invite) || $('displayName').value.trim()) connect('join', invite);
+  else $('displayName').focus();
 }
