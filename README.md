@@ -101,3 +101,9 @@ python tests/browser.py --chromium auto --english tests/fixtures/en.wav --turkis
 ```
 
 See [VERIFICATION.md](VERIFICATION.md) for the results from this build.
+
+## Chat appearance, attachments and AI replies
+
+Use **Appearance** to select a wallpaper or upload an image from your device. Your custom wallpaper (up to 3 MB) stays in the current browser. Use **Media** to select a photo or short video and then **Send** to share it with the other participant. The 12 MB per-file limit and shared server memory cap apply. Attachments are temporary and follow the room's history lifecycle. Playback depends on device codec support.
+
+Use the **Reply** button beside a message to quote it. The message menu also offers **Draft with AI** for incoming messages if the server has an **OPENAI_API_KEY**. Add the key as a server-side environment secret. Set **OPENAI_MODEL** to override the default model. The assistant asks before sending the selected message text to OpenAI. It puts the generated reply in the composer for review and never sends it automatically. The deployment owner should apply a project budget before enabling AI on an internet-facing app.

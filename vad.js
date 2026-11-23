@@ -3,6 +3,7 @@ class Phrases extends AudioWorkletProcessor {
     super();
     this.reset();
     this.enabled = false;
+    this.noiseFloor = .003;
     this.port.onmessage = ({data}) => {
       if (this.enabled !== data) this.reset();
       this.enabled = data;
@@ -20,7 +21,12 @@ class Phrases extends AudioWorkletProcessor {
     if (!this.enabled || !input?.length) return true;
     let power = 0;
     for (const value of input) power += value * value;
-    const loud = Math.sqrt(power / input.length) > 0.012;
+    const level = Math.sqrt(power / input.length);
+    const threshold = Math.max(.008, Math.min(.026, this.noiseFloor * 2.6));
+    const loud = level > threshold;
+    if (!this.length && !this.hot && (!loud || level < .018)) {
+      this.noiseFloor = .985 * this.noiseFloor + .015 * level;
+    }
     this.hot = loud ? this.hot + input.length : Math.max(0, this.hot - input.length);
     if (!this.length) {
       this.before.push(input.slice());
@@ -34,12 +40,15 @@ class Phrases extends AudioWorkletProcessor {
     this.parts.push(input.slice());
     this.length += input.length;
     this.quiet = loud ? 0 : this.quiet + input.length;
-    if (this.quiet >= sampleRate * .65 || this.length >= sampleRate * 10) {
-      const pcm = new Float32Array(this.length);
+    if (this.quiet >= sampleRate * .48 || this.length >= sampleRate * 10) {
+      const trailing = Math.max(0, this.quiet - Math.round(sampleRate * .18));
+      const pcm = new Float32Array(this.length - trailing);
       let index = 0;
       for (const part of this.parts) {
-        pcm.set(part, index);
-        index += part.length;
+        if (index >= pcm.length) break;
+        const kept = Math.min(part.length, pcm.length - index);
+        pcm.set(part.subarray(0, kept), index);
+        index += kept;
       }
       this.port.postMessage({pcm, rate:sampleRate}, [pcm.buffer]);
       this.reset();
