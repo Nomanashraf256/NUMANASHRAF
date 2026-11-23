@@ -434,3 +434,62 @@ body[data-wallpaper="solid"] #messages { background: var(--soft); }
   #appearance select { max-width: 160px; }
   #messages { min-height: 145px; }
 }
+
+/* Conversation workspace */
+body.in-room main {
+  width: min(1440px, 100%);
+  padding: 10px clamp(8px, 2vw, 28px);
+  margin: 0 auto;
+}
+body.in-room footer { display: none; }
+body.in-room #room:not([hidden]) {
+  display: flex;
+  flex-direction: column;
+  height: calc(100dvh - 128px);
+  min-height: 410px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  box-shadow: 0 12px 40px #162d4b24;
+}
+#room > :not(#messages) { flex: 0 0 auto; }
+body.in-room #messages {
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 0;
+  padding: clamp(12px, 2.4vw, 32px);
+}
+#callPanel { max-height: 36dvh; overflow: auto; }
+body[data-wallpaper="studio"] {
+  --scene: radial-gradient(ellipse at 18% 14%, #407a94 0%, transparent 54%),
+    radial-gradient(ellipse at 85% 85%, #386471 0%, transparent 66%), #203349;
+}
+#room .bubble { max-width: min(82%, 650px); border: 1px solid var(--line); }
+#room .bubble small { font-weight: 650; }
+#appearance, .chat-settings { padding: 6px 12px; }
+#appearance:not([open]) { background: var(--panel); }
+#appearance[open] {
+  position: relative;
+  z-index: 2;
+}
+.chat-settings {
+  background: var(--panel);
+  border-top: 1px solid var(--line);
+}
+.chat-settings summary { cursor: pointer; color: var(--muted); font-size: .86rem; }
+.direct-reply { margin: 5px 7px 0 0; min-height: 34px; font-size: .82rem; }
+.message-actions { display: inline-block; }
+.message-actions[open] { display: block; }
+#attachment:not([hidden]) { display: flex; gap: 8px; align-items: center; justify-content: space-between; overflow-wrap: anywhere; }
+#upgradeStatus:empty, #typingStatus:empty { display: none; }
+#upgradeStatus { margin: 4px 0; color: var(--muted); }
+.chat-media { display: block; max-width: min(100%, 480px); max-height: 42dvh; margin: 6px 0; border-radius: 8px; }
+#quality { font-size: .86rem; color: var(--muted); }
+#compose { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto; }
+#compose #draft { width: 100%; }
+@media (max-width: 600px) {
+  body.in-room main { padding-inline: 4px; }
+  body.in-room #room:not([hidden]) { border-radius: 15px; }
+  #compose { gap: 4px; }
+  #compose button { padding-inline: 7px; font-size: .8rem; }
+  .room-head { padding: 8px 12px; }
+}

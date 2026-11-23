@@ -20,9 +20,11 @@
 <main>
 <details id="appearance"><summary>◈ <span data-t="appearance"></span></summary>
 <label><span data-t="wallpaper"></span><select id="wallpaper">
-<option value="auto" data-t="rotate"></option><option value="istanbul">Istanbul</option><option value="coast">Antalya</option><option value="london">London</option><option value="aurora">Aurora</option><option value="solid" data-t="solid"></option>
+<option value="studio" data-t="studio"></option><option value="custom" data-t="custom"></option><option value="auto" data-t="rotate"></option><option value="istanbul">Istanbul</option><option value="coast">Antalya</option><option value="london">London</option><option value="aurora">Aurora</option><option value="solid" data-t="solid"></option>
 </select></label><button id="shuffle" type="button" data-t="shuffle"></button>
 <label><span data-t="theme"></span><select id="theme"><option value="light" data-t="light"></option><option value="dark" data-t="dark"></option></select></label>
+<button id="wallpaperPick" type="button" data-t="wallpaperPick"></button>
+<input id="wallpaperFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden>
 </details>
 <section id="lobby">
 <span class="mark hero">↔</span>
@@ -64,7 +66,7 @@
 <div id="callPanel" hidden>
 <div class="room-head">
 <div>
-<time id="callTime"></time> <strong id="callState">
+<span id="quality" role="status"></span> <time id="callTime"></time> <strong id="callState">
 </strong>
 <p id="callNotice" role="status">
 </p>
@@ -116,14 +118,16 @@
 </div>
 </div>
 </div>
-<div class="chat-tools">
+<details class="chat-settings"><summary data-t="chatSettings"></summary><div class="chat-tools">
 <label><input type="checkbox" id="dual"><span data-t="dual"></span></label>
 <label><input type="checkbox" id="previewToggle"><span data-t="previewToggle"></span></label>
 </div>
 <div class="room-search"><input type="search" id="search" maxlength="120"></div>
+</details>
 <div id="messages" role="log">
 </div>
 <div class="composer">
+<p id="upgradeStatus" role="status"></p>
 <p id="recordStatus" role="status">
 </p>
 <p id="typingStatus" role="status"></p>
@@ -137,7 +141,10 @@
 <div id="emojiGrid" class="emoji-grid"></div>
 </details></div>
 <div id="replyBanner" hidden><span id="replyLabel"></span><button type="button" id="cancelReply" data-t="cancel"></button></div>
+<div id="attachment" hidden><span id="attachmentName"></span><button id="cancelAttachment" type="button" data-t="cancel"></button></div>
+<input id="mediaFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime" hidden>
 <form class="row" id="compose">
+<button id="attach" type="button" data-t="attach"></button>
 <button id="mic" type="button" data-t="record">
 </button>
 <input id="draft" maxlength="1500" autocomplete="off">

@@ -1,5 +1,24 @@
 const strings = {
   en: {
+    studio: "Studio",
+    custom: "My wallpaper",
+    wallpaperPick: "Upload wallpaper",
+    chatSettings: "Search and translation settings",
+    attach: "＋ Media",
+    uploading: "Uploading…",
+    uploadError: "Upload failed. Choose a supported photo or video up to 12 MB and try again.",
+    wallpaperError: "Could not save the wallpaper. Try a smaller image.",
+    openMedia: "Open attachment",
+    aiReply: "Draft with AI",
+    aiBusy: "Drafting reply…",
+    aiError: "Could not draft a reply. Try again shortly.",
+    aiConfirm: "Send this selected message to OpenAI to draft a reply?",
+    aiDraft: "AI draft ready to edit and send.",
+    aiInsert: 'Insert AI draft',
+    qualityGood: "Audio stable",
+    qualityWeak: "Audio unstable",
+    audioReady: "Audio connected",
+
     title:'Talk across languages.', intro:'A private room for translated messages, voice notes and live calls in English and Turkish.',
     create:'Create a private room', inviteLabel:'Have an invite?', join:'Join room', code:'Room code or invite link',
     room:'Private room', copy:'Copy invite', copied:'Invite copied.', leave:'Leave', call:'Call', accept:'Accept', decline:'Decline',
@@ -26,6 +45,25 @@ const strings = {
     messageLabel:'Message', captions:'Call captions', chat:'Messages',
   },
   tr: {
+    studio: "Stüdyo",
+    custom: "Duvar kâğıdım",
+    wallpaperPick: "Duvar kâğıdı yükle",
+    chatSettings: "Arama ve çeviri ayarları",
+    attach: "＋ Medya",
+    uploading: "Yükleniyor…",
+    uploadError: "Yükleme başarısız. 12 MB veya daha küçük desteklenen bir fotoğraf veya video seçin.",
+    wallpaperError: "Duvar kâğıdı kaydedilemedi. Daha küçük bir görsel deneyin.",
+    openMedia: "Eki aç",
+    aiReply: "Yapay zekâyla yanıt yaz",
+    aiBusy: "Yanıt hazırlanıyor…",
+    aiError: "Yanıt hazırlanamadı. Biraz sonra tekrar deneyin.",
+    aiConfirm: "Yanıt taslağı için seçilen mesaj OpenAI’a gönderilsin mi?",
+    aiDraft: "Taslağı düzenleyip gönderebilirsiniz.",
+    aiInsert: "Taslağı ekle",
+    qualityGood: "Ses kararlı",
+    qualityWeak: "Ses kararsız",
+    audioReady: "Ses bağlantısı kuruldu",
+
     title:'Farklı dillerde sohbet edin.', intro:'İngilizce ve Türkçe mesajlar, sesli notlar ve canlı aramalar için özel bir oda.',
     create:'Özel oda oluştur', inviteLabel:'Davetiniz var mı?', join:'Odaya katıl', code:'Oda kodu veya davet bağlantısı',
     room:'Özel oda', copy:'Daveti kopyala', copied:'Davet kopyalandı.', leave:'Ayrıl', call:'Ara', accept:'Kabul et', decline:'Reddet',
@@ -76,6 +114,8 @@ const $ = id => document.getElementById(id);
 let language = localStorage.getItem('connect-language') === 'tr' ? 'tr' : 'en';
 const t = key => strings[language][key] || key;
 const otherLanguage = lang => lang === 'en' ? 'tr' : 'en';
+let assistantEnabled = false;
+let attachment = null;
 let ws, room, id, token, ice, reconnectTimer, peerMember, joined = false;
 let noticeKey = '', callNoticeKey = '', recordKey = '';
 let call, pc, generation, candidates = new Map(), callMic, audioContext, worklet;
@@ -256,6 +296,7 @@ function messageRow(message, caption) {
     const body = element('div');
     linkText(body, messageText(message));
     row.append(body);
+    if (message.kind === 'media') row.append(mediaButton(message));
   } else {
     row.append(element('strong', t(own ? 'you' : 'other') + ' · '), document.createTextNode(messageText(message)));
   }
@@ -297,7 +338,11 @@ function messageRow(message, caption) {
     if (message.correction) row.append(element('div', t('corrected') + ' · ' + message.correction, 'secondary'));
     const options = element('details', '', 'message-actions');
     options.append(element('summary', t('menu')));
-    options.append(action('reply', () => setReply(message)));
+    const reply = action('reply', () => setReply(message));
+    reply.className = 'direct-reply';
+    row.append(reply);
+    if (!own && assistantEnabled && message.original && ['text', 'voice'].includes(message.kind))
+      options.append(action('aiReply', () => draftReply(message)));
     if (message.original) options.append(action('copyOriginal', () => copyText(message.original)));
     if (message.translated) options.append(action('copyTranslation', () => copyText(message.translated)));
     if (message.translated) options.append(action('correction', () => {
@@ -387,6 +432,8 @@ function connect(type, code) {
       sessionStorage.setItem('connect:' + room, token);
       history.replaceState(null, '', '#room=' + room);
       joined = true;
+      assistantEnabled = event.assistant === true;
+      document.body.classList.add('in-room');
       $('lobby').hidden = true;
       $('room').hidden = false;
       changeWallpaper();
@@ -444,6 +491,10 @@ function enableLobby() {
   $('join').querySelector('button').disabled = false;
 }
 function resetRoom() {
+  document.body.classList.remove('in-room');
+  selectAttachment(null);
+  upgradeStatus('');
+
   const previous = ws;
   enableLobby();
   ws = null;
@@ -469,7 +520,7 @@ function resetRoom() {
 async function microphone() {
   if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) throw new Error('secure');
   try {
-    return await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true, noiseSuppression:true, autoGainControl:true}});
+    return await navigator.mediaDevices.getUserMedia({audio:{channelCount:{ideal:1}, echoCancellation:true, noiseSuppression:true, autoGainControl:true}});
   } catch (error) {
     throw new Error(error.name === 'NotAllowedError' ? 'denied' : 'micError');
   }
@@ -494,6 +545,7 @@ function queueSignal(job) {
   });
 }
 function closePeer() {
+  $('quality').textContent = '';
   const previous = pc;
   pc = null;
   if (previous) {
@@ -520,7 +572,14 @@ function makePeer(nextGeneration) {
   generation = nextGeneration;
   const current = new RTCPeerConnection({iceServers:ice});
   pc = current;
-  for (const track of callMic.getAudioTracks()) current.addTrack(track, callMic);
+  for (const track of callMic.getAudioTracks()) {
+    const sender = current.addTrack(track, callMic);
+    const parameters = sender.getParameters();
+    if (parameters.encodings?.length) {
+      parameters.encodings[0].maxBitrate = 48000;
+      sender.setParameters(parameters).catch(() => {});
+    }
+  }
   current.onicecandidate = event => {
     if (event.candidate && pc === current) signal('candidate', event.candidate.toJSON());
   };
@@ -531,7 +590,10 @@ function makePeer(nextGeneration) {
   };
   current.onconnectionstatechange = () => {
     if (pc !== current) return;
-    if (current.connectionState === 'connected') reflectCapture();
+    if (current.connectionState === 'connected') {
+      $('quality').textContent = t('audioReady');
+      reflectCapture();
+    }
     else if (['disconnected', 'failed'].includes(current.connectionState)) {
       callNotice('mediaFailure');
       if (call?.caller !== id) signal('restart', null);
@@ -714,8 +776,10 @@ async function sendAudio(kind, blob, callId) {
   for (let index = 0; index < bytes.length; index += 8192)
     binary += String.fromCharCode(...bytes.subarray(index, index + 8192));
   if (kind === 'phrase' && call?.id !== callId) return;
-  if (!send({type:kind, id:crypto.randomUUID(), mime:blob.type, audio:btoa(binary), call:callId}))
+  if (!send({type:kind, id:crypto.randomUUID(), mime:blob.type, audio:btoa(binary), call:callId,
+    reply:kind === 'voice' ? replyTo?.key : undefined}))
     notice('disconnected');
+  else if (kind === 'voice') setReply(null);
 }
 function uploadPhrase(blob) {
   const callId = call?.id;
@@ -964,6 +1028,31 @@ function drawQuick() {
   }
 }
 const scenes = ['istanbul','coast','london','aurora'];
+const wallpaperKey = 'connect-custom-wallpaper';
+$('wallpaperPick').onclick = () => $('wallpaperFile').click();
+$('wallpaperFile').onchange = async event => {
+  const file = event.target.files[0];
+  event.target.value = '';
+  if (!file) return;
+  if (file.size > 3 * 1024 * 1024 || !/^image\/(jpeg|png|webp|gif)$/.test(file.type))
+    return alert(t('wallpaperError'));
+  try {
+    const reader = new FileReader();
+    const data = await new Promise((resolve, reject) => {
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+    const image = new Image();
+    image.src = data;
+    await image.decode();
+    localStorage.setItem(wallpaperKey, data);
+    $('wallpaper').value = 'custom';
+    $('wallpaper').onchange();
+  } catch {
+    alert(t('wallpaperError'));
+  }
+};
 let activeScene = localStorage.getItem('connect-last-wallpaper') || '';
 function changeWallpaper(shuffle = false) {
   const mode = $('wallpaper').value;
@@ -971,11 +1060,14 @@ function changeWallpaper(shuffle = false) {
     const next = scenes.filter(scene => scene !== activeScene);
     activeScene = next[Math.floor(Math.random() * next.length)];
   } else activeScene = mode;
-  document.body.dataset.wallpaper = activeScene;
+  const custom = activeScene === 'custom' && localStorage.getItem(wallpaperKey);
+  document.body.dataset.wallpaper = activeScene === 'custom' && !custom ? 'studio' : activeScene;
+  if (custom) $('messages').style.backgroundImage = 'linear-gradient(#12203842,#12203860),url("' + custom + '")';
+  else $('messages').style.removeProperty('background-image');
   localStorage.setItem('connect-last-wallpaper', activeScene);
 }
-$('wallpaper').value = localStorage.getItem('connect-wallpaper') || 'auto';
-if (!$('wallpaper').value) $('wallpaper').value = 'auto';
+$('wallpaper').value = localStorage.getItem('connect-wallpaper') || 'studio';
+if (!$('wallpaper').value) $('wallpaper').value = 'studio';
 $('wallpaper').onchange = () => {
   localStorage.setItem('connect-wallpaper', $('wallpaper').value);
   changeWallpaper();
@@ -1054,8 +1146,127 @@ $('previewToggle').onchange = () => {
   localStorage.setItem('connect-preview', String($('previewToggle').checked));
   updateDraft(false);
 };
-$('compose').onsubmit = event => {
+function upgradeStatus(key) {
+  $('upgradeStatus').textContent = key ? t(key) : '';
+}
+function roomHeaders() {
+  return {Authorization:'Bearer ' + room + '.' + token};
+}
+function selectAttachment(file) {
+  attachment = file;
+  $('attachment').hidden = !file;
+  $('attachmentName').textContent = file?.name || '';
+}
+$('attach').onclick = () => $('mediaFile').click();
+$('cancelAttachment').onclick = () => selectAttachment(null);
+$('mediaFile').onchange = event => {
+  const file = event.target.files[0];
+  event.target.value = '';
+  if (!file) return;
+  if (!file.size || file.size > 12 * 1024 * 1024 || !$('mediaFile').accept.split(',').includes(file.type)) return upgradeStatus('uploadError');
+  selectAttachment(file);
+  upgradeStatus('');
+};
+async function shareAttachment() {
+  const file = attachment;
+  const currentRoom = room;
+  const reply = replyTo?.key;
+  const params = new URLSearchParams({name:file.name});
+  if (reply) params.set('reply', reply);
+  upgradeStatus('uploading');
+  try {
+    const response = await fetch('/media?' + params, {
+      method:'POST', headers:{...roomHeaders(), 'Content-Type':file.type}, body:file,
+    });
+    if (!response.ok) throw new Error();
+    if (currentRoom === room && attachment === file) selectAttachment(null);
+    if (currentRoom === room && replyTo?.key === reply) setReply(null);
+    if (currentRoom === room) upgradeStatus('');
+  } catch {
+    if (currentRoom === room) upgradeStatus('uploadError');
+    throw new Error();
+  }
+}
+function mediaButton(message) {
+  const button = action('openMedia', async () => {
+    button.disabled = true;
+    try {
+      const response = await fetch('/media/' + encodeURIComponent(message.key), {headers:roomHeaders()});
+      if (!response.ok) throw new Error();
+      const blob = await response.blob();
+      if (!button.isConnected) return;
+      const src = originals.get(message.key) || URL.createObjectURL(blob);
+      originals.set(message.key, src);
+      const media = element(message.mime.startsWith('image/') ? 'img' : 'video', '', 'chat-media');
+      media.alt = message.original;
+      media.controls = true;
+      media.playsInline = true;
+      media.src = src;
+      const download = element('a', message.original);
+      download.href = src;
+      download.download = message.original;
+      button.replaceWith(media, download);
+    } catch {
+      upgradeStatus('uploadError');
+      button.disabled = false;
+    }
+  });
+  return button;
+}
+async function draftReply(message) {
+  if (!window.confirm(t('aiConfirm'))) return;
+  const initialDraft = $('draft').value;
+  const currentRoom = room;
+  upgradeStatus('aiBusy');
+  try {
+    const response = await fetch('/assistant', {method:'POST',
+      headers:{...roomHeaders(), 'Content-Type':'application/json'},
+      body:JSON.stringify({key:message.key}),
+    });
+    if (!response.ok) throw new Error();
+    const {draft} = await response.json();
+    if (currentRoom !== room) return;
+    if ($('draft').value !== initialDraft || initialDraft.trim()) {
+      upgradeStatus('');
+      const insert = action('aiInsert', () => {
+        $('draft').value = [$('draft').value.trim(), draft].filter(Boolean).join(' ').slice(0, 1500);
+        setReply(message);
+        updateDraft(false);
+        upgradeStatus('');
+      });
+      $('upgradeStatus').append(insert);
+      return;
+    }
+    $('draft').value = draft;
+    setReply(message);
+    updateDraft(false);
+    upgradeStatus('aiDraft');
+  } catch {
+    if (currentRoom === room) upgradeStatus('aiError');
+  }
+}
+setInterval(async () => {
+  const current = pc;
+  if (current?.connectionState !== 'connected') return;
+  try {
+    for (const stat of (await current.getStats()).values()) {
+      if (pc === current && stat.type === 'inbound-rtp' && stat.kind === 'audio') {
+        const total = stat.packetsReceived + stat.packetsLost;
+        const weak = stat.jitter > .05 || (total > 20 && stat.packetsLost / total > .05);
+        $('quality').textContent = t(weak ? 'qualityWeak' : 'qualityGood');
+      }
+    }
+  } catch { /* Connection closed during sampling. */ }
+}, 3000);
+$('compose').onsubmit = async event => {
   event.preventDefault();
+  if ($('send').disabled) return;
+  if (attachment) {
+    $('send').disabled = true;
+    try { await shareAttachment(); } catch { return; }
+    finally { $('send').disabled = false; }
+    return;
+  }
   const text = $('draft').value.trim();
   if (text && send({type:'text', id:crypto.randomUUID(), text, reply:replyTo?.key})) {
     $('draft').value = '';
