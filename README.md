@@ -1,6 +1,6 @@
 # English–Turkish Connect
 
-Two people can join a private room and use translated text, voice notes, and WebRTC audio with phrase-by-phrase translated captions and speech. The Python server runs the speech and translation models on CPU. The browser sends call audio directly to the other participant over WebRTC when network conditions allow. It sends separate short audio clips to your server for transcription.
+Guests can join a shareable room to exchange translated text, voice notes, and files. Two online participants can use WebRTC audio with phrase-by-phrase translated captions and speech. The Python server runs the speech and translation models on CPU. The browser sends call audio directly to the other participant over WebRTC when network conditions allow. It sends separate short audio clips to your server for transcription.
 
 ## Start on one computer
 
@@ -26,18 +26,19 @@ Docker is an alternative when a suitable Python version or eSpeak NG is unavaila
 docker build -t english-turkish-connect .
 docker volume create connect-models
 docker run --rm -v connect-models:/models english-turkish-connect python download_models.py
-docker run --rm -p 127.0.0.1:8080:8080 -v connect-models:/models:ro english-turkish-connect
+docker volume create connect-chat
+docker run --rm -p 127.0.0.1:8080:8080 -v connect-models:/models:ro -v connect-chat:/data english-turkish-connect
 ```
 
 Keep the host computer awake and the server running. You can reuse the models offline once installed. `MODELS` selects the model directory. `MODEL_THREADS` selects CPU threads per inference engine. `ESPEAK` can specify the full path to eSpeak NG.
 
-## Invite a second person
+## Create or join a room
 
-1. Choose **I speak English** or **Türkçe konuşuyorum** and create a room.
-2. Select **Copy invite** and share the URL privately. The other person opens it, selects their language, then taps **Join room**. A room code is the 24 characters after `#room=`. Use the same public or LAN HTTPS origin on both devices.
-3. Type and send a message. The receiver sees it in their selected language and can use **Show original** to check the source. For a voice note, tap **Record**, speak, then tap **Stop recording**. Notes stop automatically after 15 seconds. Expand **Show original** for the original audio and transcript. Tap **Play translation** for spoken playback. The sender can retry transcription or translation on a failed message.
+1. Choose **I speak English** or **Türkçe konuşuyorum**, enter a display name, and create a room.
+2. Select **Copy invite** and share the URL privately. The other person opens it, selects their language, enters a display name, then taps **Join room**. A room code is the 24 characters after `#room=`. Use the same public or LAN HTTPS origin on both devices.
+3. Type and send a message. The receiver sees it in their selected language and can use **Show original** to check the source. For a voice note, tap **Record**, speak, then tap **Stop recording**. Notes stop automatically after 15 seconds. Use the media control for the original recording and the translation controls for the transcript. Tap **Play translation** for spoken playback. The sender can retry transcription or translation on a failed message.
 4. Tap **Call**. The other person taps **Accept** to join or **Decline** to dismiss. Grant the microphone when prompted. Choose **Translation**, **Original audio**, or **Both**. All three modes keep captions on. If automatic phrase detection is unreliable, set **Speech capture** to **Push to talk**, tap **Start speaking**, speak one phrase, and tap **Finish phrase**.
-5. Use **Mute** to pause sending microphone audio and live transcription. Use **End call** to stop the conversation and **Leave** to free the room seat.
+5. Use **Mute** to pause sending microphone audio and live transcription. Use **End call** to stop the conversation and **Leave** to return to the lobby.
 
 Automatic capture waits for a pause of roughly 650 ms before sending a phrase. Noise, weak microphones, accents, short utterances, and CPU load can affect recognition and delay. The browser queues translations in phrase order and temporarily pauses outgoing microphone audio during translated playback to reduce feedback. Take turns speaking for the most reliable translated audio. If a browser blocks playback, tap **Play translation** beside a caption. Keep mobile browsers in the foreground and allow the microphone in browser settings. The included browser suite targets Chromium. Safari and Firefox may handle autoplay, device voices, background tabs, and recording formats differently.
 
@@ -65,7 +66,7 @@ In that case, start the Python server with the exact external origin so the WebS
 PUBLIC_ORIGIN=https://translate.example.com python server.py
 ```
 
-Use a single long-running server process for rooms and signaling. If you restart it, all current rooms disappear. When inviting a person on the internet, your proxy must be reachable from both networks. The audio path also needs suitable network connectivity. Configure your own [coturn](https://github.com/coturn/coturn) STUN/TURN instance if direct calls fail across networks.
+Use a single server process for WebSocket delivery and call signaling. The room database survives restarts when its path is on persistent storage. Active calls end on a process restart. When inviting a person on the internet, your proxy must be reachable from both networks. The audio path also needs suitable network connectivity. Configure your own [coturn](https://github.com/coturn/coturn) STUN/TURN instance if direct calls fail across networks.
 
 ```bash
 export ICE_SERVERS='[
@@ -79,9 +80,19 @@ Configure coturn authentication, a TLS certificate for `turns:`, its public IP o
 
 ## Data and models
 
-Rooms have random invite codes, are unlisted, and reserve at most two seats. A disconnected tab can reclaim its seat with the session token kept by the browser. Explicitly leaving releases the seat. Room history is held in server memory, capped at 35 recent chat messages and call phrases combined, and removed after approximately five minutes with nobody connected. In-progress calls are kept while one participant remains or until the room expires. Active call captions clear when the call ends. Browser preferences and the tab's room recovery token are stored locally.
+Room links are unlisted and do not expire. Guests with a room link can read its complete retained history. Each browser profile remembers its own room identity and owner or moderator permissions. Clearing browser data loses that identity. A removed anonymous participant can create another guest identity if they still have the link. Audio from active calls and typing indicators are transient.
 
-A trusted host runs the application because the server receives text and clips for translation and transcription. Use HTTPS when leaving localhost. Translation and chat are visible to the server operator. Browser device voices are chosen only if they advertise local service. The server generates an eSpeak NG WAV when a suitable local voice is unavailable. Phrase transcripts, recordings, messages, and audio are kept out of disk storage by the application. Configure any reverse proxy to avoid request-body logging.
+The server stores room data and attachments in SQLite. Configure `CHAT_DB` to point to a private persistent disk or volume. The Docker image uses `/data/chat.sqlite3`, so mount the persistent volume at `/data` before deploying on Hostless. Existing rooms from versions that stored chat only in server memory cannot be imported by this release. Keep one instance configured because WebSocket fan-out and call state run in that instance.
+
+Schedule consistent SQLite snapshots on your backup system using unique destination paths, for example:
+
+```bash
+python chat_store.py /private-backups/learn-chat-2026-11-24.sqlite3
+```
+
+Keep verified backup copies on independent private storage. To verify a restore, launch an isolated app using the snapshot as its `CHAT_DB`, connect with a known link, and open an earlier message and attachment. Run `python -m unittest -v test_chat` for an automated restore test.
+
+Use HTTPS when leaving localhost. The trusted server operator can access room data. A browser that supports notifications can show room alerts while the app is open and connected in a background tab. Per-room notification preferences are kept in the current browser profile.
 
 - Speech recognition uses the multilingual [faster-whisper base](https://huggingface.co/Systran/faster-whisper-base) model in CPU INT8 mode.
 - Translation uses the published English→Turkish and Turkish→English Argos 1.5 models with CTranslate2 and SentencePiece. The downloader includes each model’s credits. [Argos packages](https://data.argosopentech.com/argospm/v1/)

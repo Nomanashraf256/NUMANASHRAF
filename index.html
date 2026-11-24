@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>English–Turkish Connect</title>
 <link rel="stylesheet" href="/assets/style.css">
+<link rel="stylesheet" href="/assets/chat.css">
 <script type="module" src="/assets/app.js">
 </script>
 </head>
@@ -33,6 +34,8 @@
 <p data-t="intro">
 </p>
 <div class="entry">
+<label for="displayName" data-t="displayName"></label>
+<input id="displayName" maxlength="40" autocomplete="nickname">
 <button class="primary" id="create" data-t="create">
 </button>
 <form id="join">
@@ -55,6 +58,7 @@
 </p>
 </div>
 <div class="row">
+<button id="detailsToggle" type="button" data-t="roomDetails" aria-controls="roomDetails" aria-expanded="false"></button>
 <button id="copy" data-t="copy">
 </button>
 <button id="leave" data-t="leave">
@@ -118,12 +122,25 @@
 </div>
 </div>
 </div>
-<details class="chat-settings"><summary data-t="chatSettings"></summary><div class="chat-tools">
+<details class="chat-settings" id="chatSettings"><summary data-t="chatSettings"></summary><div class="chat-tools">
 <label><input type="checkbox" id="dual"><span data-t="dual"></span></label>
 <label><input type="checkbox" id="previewToggle"><span data-t="previewToggle"></span></label>
 </div>
 <div class="room-search"><input type="search" id="search" maxlength="120"></div>
 </details>
+<section id="roomDetails" hidden>
+<label><span data-t="notifications"></span> <select id="notifications">
+<option value="all" data-t="allMessages"></option><option value="mentions" data-t="mentionsOnly"></option>
+<option value="mute" data-t="mutedRoom"></option></select></label>
+<div class="row"><button id="mediaToggle" type="button" data-t="mediaFiles"></button>
+<button id="pinsToggle" type="button" data-t="pinnedMessages"></button>
+<button id="participantsToggle" type="button" data-t="participants"></button></div>
+<div id="roomDetailsList"></div>
+</section>
+<div class="history-controls">
+<button id="older" type="button" data-t="olderMessages" hidden></button>
+<button id="latest" type="button" data-t="latestMessages" hidden></button>
+</div>
 <div id="messages" role="log">
 </div>
 <div class="composer">
@@ -132,7 +149,8 @@
 </p>
 <p id="typingStatus" role="status"></p>
 <div id="preview" role="status" hidden></div>
-<div class="composer-tools">
+<button id="typingControls" type="button" aria-controls="appearance callPanel chatSettings composerTools attach mic" aria-expanded="true" hidden></button>
+<div class="composer-tools" id="composerTools">
 <details id="quick"><summary data-t="quick"></summary><div id="quickItems"></div></details>
 <details id="emojiPicker">
 <summary data-t="emoji"></summary>
@@ -142,12 +160,12 @@
 </details></div>
 <div id="replyBanner" hidden><span id="replyLabel"></span><button type="button" id="cancelReply" data-t="cancel"></button></div>
 <div id="attachment" hidden><span id="attachmentName"></span><button id="cancelAttachment" type="button" data-t="cancel"></button></div>
-<input id="mediaFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime" hidden>
+<input id="mediaFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime,application/pdf,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
 <form class="row" id="compose">
 <button id="attach" type="button" data-t="attach"></button>
 <button id="mic" type="button" data-t="record">
 </button>
-<input id="draft" maxlength="1500" autocomplete="off">
+<textarea id="draft" rows="2" maxlength="1500" autocomplete="off"></textarea>
 <button class="primary" id="send" data-t="send">
 </button>
 </form>
