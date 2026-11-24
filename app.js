@@ -21,7 +21,7 @@ const strings = {
 
     openConversation:'View in conversation', displayName:'Display name', roomDetails:'Room details', notifications:'Notifications',
     allMessages:'All messages', mentionsOnly:'Mentions only', mutedRoom:'Mute', mediaFiles:'Media and files',
-    pinnedMessages:'Pinned messages', participants:'Participants', olderMessages:'Older messages',
+    pinnedMessages:'Pinned messages', participants:'Participants', olderMessages:'Older messages', latestMessages:'Jump to latest',
     removed:'You were removed from this room.', edited:'Edited', forwarded:'Forwarded', deleted:'Message deleted',
     editMessage:'Edit', deleteMessage:'Delete message', pin:'Pin', unpin:'Unpin', report:'Report',
     reported:'Report sent.', forward:'Forward', forwardRoom:'Enter a room code or link for a room you joined.',
@@ -78,7 +78,7 @@ const strings = {
     create:'Özel oda oluştur', inviteLabel:'Davetiniz var mı?', join:'Odaya katıl', code:'Oda kodu veya davet bağlantısı',
     openConversation:'Konuşmada göster', displayName:'Görünen ad', roomDetails:'Oda ayrıntıları', notifications:'Bildirimler',
     allMessages:'Tüm mesajlar', mentionsOnly:'Yalnızca bahsetmeler', mutedRoom:'Sessiz', mediaFiles:'Medya ve dosyalar',
-    pinnedMessages:'Sabitlenen mesajlar', participants:'Katılımcılar', olderMessages:'Eski mesajlar',
+    pinnedMessages:'Sabitlenen mesajlar', participants:'Katılımcılar', olderMessages:'Eski mesajlar', latestMessages:'Son mesajlara git',
     removed:'Odadan çıkarıldınız.', edited:'Düzenlendi', forwarded:'İletildi', deleted:'Mesaj silindi',
     editMessage:'Düzenle', deleteMessage:'Mesajı sil', pin:'Sabitle', unpin:'Sabitlemeyi kaldır', report:'Bildir',
     reported:'Bildirim gönderildi.', forward:'İlet', forwardRoom:'Katıldığınız odanın kodunu veya bağlantısını girin.',
@@ -136,7 +136,7 @@ const t = key => strings[language][key] || key;
 const otherLanguage = lang => lang === 'en' ? 'tr' : 'en';
 let assistantEnabled = false;
 let roomRole, onlineCount = 0, olderCursor = 0, hasOlder = false, newest = 0;
-let historyBusy = false, searchTimer, searchResults = null, detailMode = '', unreadCount = 0;
+let historyBusy = false, viewingHistory = false, searchTimer, searchResults = null, detailMode = '', unreadCount = 0;
 let historyVersion = 0, receiptRead = 0, notificationMode = 'all';
 const attachmentIds = new WeakMap();
 const pending = new Map();
@@ -659,6 +659,7 @@ function resetRoom() {
   clearTimeout(reconnectTimer);
   olderCursor = newest = historyVersion = receiptRead = unreadCount = onlineCount = 0;
   hasOlder = false;
+  viewingHistory = false;
   searchResults = null;
   if (room) pending.clear();
   draftMentions.clear();
@@ -1286,7 +1287,7 @@ function acknowledge(message) {
 }
 function atLatest() {
   const list = $('messages');
-  return !searchResults && list.scrollHeight - list.scrollTop - list.clientHeight < 75;
+  return !searchResults && !viewingHistory && list.scrollHeight - list.scrollTop - list.clientHeight < 75;
 }
 let receiptTimer;
 function sendReceipt() {
@@ -1316,6 +1317,7 @@ async function roomGet(path, parameters = {}) {
 }
 function showOlder() {
   $('older').hidden = !hasOlder || Boolean(searchResults);
+  $('latest').hidden = !hasOlder && !searchResults && !viewingHistory;
 }
 async function loadOlder() {
   if (!online() || !hasOlder || historyBusy || searchResults) return;
@@ -1338,6 +1340,23 @@ async function loadOlder() {
   finally { historyBusy = false; }
 }
 $('older').onclick = loadOlder;
+$('latest').onclick = async () => {
+  if (!online()) return;
+  try {
+    const page = await roomGet('/history');
+    for (const key of messages.keys()) removeMessage(key);
+    for (const message of page.messages) messages.set(message.key, message);
+    $('search').value = '';
+    searchResults = null;
+    viewingHistory = false;
+    olderCursor = page.messages[0]?.seq || 0;
+    hasOlder = page.more;
+    drawMessages();
+    showOlder();
+    $('messages').scrollTop = $('messages').scrollHeight;
+    sendReceipt();
+  } catch { notice('loadError'); }
+};
 async function recoverHistory(after, more, connection, version) {
   try {
     while (more && ws === connection && online()) {
@@ -1395,13 +1414,16 @@ async function searchRoom(query, before = 0) {
 async function jumpToMessage(seq) {
   try {
     const page = await roomGet('/history', {before:seq + 1});
+    for (const key of messages.keys()) removeMessage(key);
     for (const message of page.messages) messages.set(message.key, message);
     $('search').value = '';
     searchResults = null;
-    olderCursor = Math.min(olderCursor || Infinity, page.messages[0]?.seq || seq);
-    hasOlder = page.more || hasOlder;
+    viewingHistory = true;
+    olderCursor = page.messages[0]?.seq || seq;
+    hasOlder = page.more;
     drawMessages();
     showOlder();
+    $('latest').hidden = false;
     $('messages').querySelector('[data-seq="' + seq + '"]')?.scrollIntoView({block:'nearest'});
   } catch { notice('loadError'); }
 }
@@ -1596,10 +1618,22 @@ async function shareAttachment() {
   if (reply) params.set('reply', reply);
   upgradeStatus('uploading');
   try {
-    const response = await fetch('/media?' + params, {
-      method:'POST', headers:{...roomHeaders(), 'Content-Type':file.type}, body:file,
+    await new Promise((resolve, reject) => {
+      const request = new XMLHttpRequest();
+      request.open('POST', '/media?' + params);
+      request.timeout = 120000;
+      for (const [header, value] of Object.entries(roomHeaders())) request.setRequestHeader(header, value);
+      request.setRequestHeader('Content-Type', file.type);
+      request.upload.onprogress = event => {
+        if (currentRoom === room && event.lengthComputable) {
+          const percent = Math.round(100 * event.loaded / event.total);
+          $('upgradeStatus').textContent = t('uploading') + ' ' + percent + '%';
+        }
+      };
+      request.onload = () => request.status >= 200 && request.status < 300 ? resolve() : reject();
+      request.onerror = request.ontimeout = request.onabort = reject;
+      request.send(file);
     });
-    if (!response.ok) throw new Error();
     if (currentRoom === room && attachment === file) selectAttachment(null);
     if (currentRoom === room && replyTo?.key === reply) setReply(null);
     if (currentRoom === room) upgradeStatus('');

@@ -183,6 +183,18 @@ class RoomsTest(unittest.IsolatedAsyncioTestCase):
                 await ws.close()
             await a.close()
 
+    async def test_many_independent_active_rooms(self):
+        async with self.client(self.db) as client:
+            owners = [await connect(client, "create", f"Owner {i}") for i in range(24)]
+            guests = [await connect(client, "join", f"Guest {i}", code=state["code"])
+                      for i, (_, state) in enumerate(owners)]
+            await asyncio.gather(*(post(ws, f"Room message {i}") for i, (ws, _) in enumerate(owners[:12])))
+            await asyncio.gather(*(post(ws, f"Room message {i}") for i, (ws, _) in enumerate(owners[12:], 12)))
+            for i, (_, state) in enumerate(guests):
+                page = await self.history(client, state)
+                self.assertEqual([item["original"] for item in page["messages"]], [f"Room message {i}"])
+            await asyncio.gather(*(ws.close() for ws, _ in owners + guests))
+
 
 if __name__ == "__main__":
     unittest.main()

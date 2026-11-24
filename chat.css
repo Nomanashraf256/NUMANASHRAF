@@ -64,7 +64,8 @@
 }
 .detail-row { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem; padding-block: .25rem; }
 .detail-row:first-child { padding-top: 0; }
-#older { align-self: center; margin-block: .25rem; }
+.history-controls { display: flex; justify-content: center; gap: .5rem; }
+.history-controls button { margin-block: .25rem; }
 .bubble { white-space: pre-wrap; }
 @media (max-width: 600px) {
   body.typing-focus #roomDetails { display: none; }
