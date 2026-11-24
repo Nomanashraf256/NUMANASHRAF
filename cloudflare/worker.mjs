@@ -318,7 +318,7 @@ export class Room extends DurableObject {
           if (member.role==='owner') {
             const enabled = data.enabled===true;
             this.sql.exec('UPDATE settings SET shared=?',enabled?1:0);
-            send(ws,{type:'sharing',enabled});
+            this.broadcast({type:'sharing',enabled});
           }
           return;
         case 'resolve':

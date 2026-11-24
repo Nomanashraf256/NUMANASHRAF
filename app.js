@@ -137,6 +137,7 @@ const otherLanguage = lang => lang === 'en' ? 'tr' : 'en';
 let assistantEnabled = false;
 let roomRole, onlineCount = 0, olderCursor = 0, hasOlder = false, newest = 0;
 let historyBusy = false, viewingHistory = false, searchTimer, searchResults = null, detailMode = '', unreadCount = 0;
+let recoveryFloor = null;
 let historyVersion = 0, receiptRead = 0, notificationMode = 'all';
 const attachmentIds = new WeakMap();
 const pending = new Map();
@@ -543,6 +544,7 @@ function connect(type, code) {
   clearTimeout(reconnectTimer);
   joined = false;
   const old = ws;
+  if (code && code === room) recoveryFloor ??= newest;
   const endpoint = new URL('/ws', location.href.replace(/^http/, 'ws'));
   if (type === 'create') endpoint.searchParams.set('create', '1');
   else endpoint.searchParams.set('room', code);
@@ -554,7 +556,7 @@ function connect(type, code) {
   let rejected = false;
   connection.onopen = () => connection.send(JSON.stringify({
     type, code, lang:language, token:code ? roomToken(code) : null,
-    name:$('displayName').value.trim(), after:code === room ? newest : 0,
+    name:$('displayName').value.trim(), after:code === room ? recoveryFloor ?? newest : 0,
   }));
   connection.onmessage = ({data}) => {
     if (connection !== ws) return;
@@ -582,7 +584,7 @@ function connect(type, code) {
         olderCursor = event.messages[0]?.seq || 0;
       }
       for (const message of event.messages) {
-        messages.set(message.key, message);
+        if (!(messages.get(message.key)?.revision > message.revision)) messages.set(message.key, message);
         acknowledge(message);
         newest = Math.max(newest, message.seq);
       }
@@ -665,6 +667,7 @@ function resetRoom() {
   ws = null;
   previous?.close();
   clearTimeout(reconnectTimer);
+  recoveryFloor = null;
   olderCursor = newest = historyVersion = receiptRead = unreadCount = onlineCount = 0;
   hasOlder = false;
   viewingHistory = false;
@@ -1301,7 +1304,7 @@ let receiptTimer;
 function sendReceipt() {
   clearTimeout(receiptTimer);
   receiptTimer = setTimeout(() => {
-    if (!newest || !online()) return;
+    if (!newest || !online() || recoveryFloor !== null) return;
     if (!document.hidden && atLatest()) {
       receiptRead = newest;
       unreadCount = 0;
@@ -1385,7 +1388,10 @@ async function recoverHistory(after, more, connection, version) {
       changesCursor = changes.version;
       moreChanges = changes.more;
     }
-    if (ws === connection && online()) historyVersion = Math.max(historyVersion, version);
+    if (ws === connection && online()) {
+      historyVersion = Math.max(historyVersion, version);
+      recoveryFloor = null;
+    }
     sendReceipt();
   } catch { if (ws === connection) connection.close(); }
 }
