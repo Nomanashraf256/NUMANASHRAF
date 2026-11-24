@@ -19,7 +19,7 @@ const strings = {
     qualityWeak: "Audio unstable",
     audioReady: "Audio connected",
 
-    openConversation:'View in conversation', recentRooms:'Recent rooms', roomAccess:'Start or join a room', cityPhoto:'Istanbul waterfront', displayName:'Display name', linkSharing:'Allow new guests with the room link', privateHistory:'Only existing participants can open this room.', roomDetails:'Room details', notifications:'Notifications',
+    openConversation:'View in conversation', recentRooms:'Recent rooms', inbox:'Chats', findRooms:'Find a chat by room code', inboxEmpty:'Create a room or join with an invite to start chatting.', roomAccess:'Start or join a room', cityPhoto:'Istanbul waterfront', displayName:'Display name', linkSharing:'Allow new guests with the room link', privateHistory:'Only existing participants can open this room.', roomDetails:'Room details', notifications:'Notifications',
     allMessages:'All messages', mentionsOnly:'Mentions only', mutedRoom:'Mute', mediaFiles:'Media and files',
     pinnedMessages:'Pinned messages', participants:'Participants', olderMessages:'Older messages', latestMessages:'Jump to latest',
     removed:'You were removed from this room.', edited:'Edited', forwarded:'Forwarded', deleted:'Message deleted',
@@ -76,7 +76,7 @@ const strings = {
 
     title:'Farklı dillerde sohbet edin.', intro:'İngilizce ve Türkçe mesajlar, sesli notlar ve canlı aramalar için özel bir oda.',
     create:'Özel oda oluştur', inviteLabel:'Davetiniz var mı?', join:'Odaya katıl', code:'Oda kodu veya davet bağlantısı',
-    openConversation:'Konuşmada göster', recentRooms:'Son odalar', roomAccess:'Oda oluştur veya katıl', cityPhoto:'İstanbul sahili', displayName:'Görünen ad', linkSharing:'Bağlantıyla yeni misafirlerin katılmasına izin ver', privateHistory:'Bu odayı yalnızca mevcut katılımcılar açabilir.', roomDetails:'Oda ayrıntıları', notifications:'Bildirimler',
+    openConversation:'Konuşmada göster', recentRooms:'Son odalar', inbox:'Sohbetler', findRooms:'Oda koduyla sohbet bul', inboxEmpty:'Sohbete başlamak için bir oda oluşturun veya davetle katılın.', roomAccess:'Oda oluştur veya katıl', cityPhoto:'İstanbul sahili', displayName:'Görünen ad', linkSharing:'Bağlantıyla yeni misafirlerin katılmasına izin ver', privateHistory:'Bu odayı yalnızca mevcut katılımcılar açabilir.', roomDetails:'Oda ayrıntıları', notifications:'Bildirimler',
     allMessages:'Tüm mesajlar', mentionsOnly:'Yalnızca bahsetmeler', mutedRoom:'Sessiz', mediaFiles:'Medya ve dosyalar',
     pinnedMessages:'Sabitlenen mesajlar', participants:'Katılımcılar', olderMessages:'Eski mesajlar', latestMessages:'Son mesajlara git',
     removed:'Odadan çıkarıldınız.', edited:'Düzenlendi', forwarded:'İletildi', deleted:'Mesaj silindi',
@@ -305,7 +305,11 @@ function labelUI() {
   document.documentElement.lang = language;
   $('locale').value = language;
   document.querySelectorAll('[data-t]').forEach(el => { el.textContent = t(el.dataset.t); });
-  document.querySelectorAll('[data-t-label]').forEach(el => el.setAttribute('aria-label', t(el.dataset.tLabel)));
+  document.querySelectorAll('[data-t-label]').forEach(el => {
+    el.setAttribute('aria-label', t(el.dataset.tLabel));
+    if (el.matches('input')) el.placeholder = t(el.dataset.tLabel);
+  });
+  drawRecentRooms();
   $('code').placeholder = t('code');
   $('draft').placeholder = t('draft');
   $('draft').setAttribute('aria-label', t('messageLabel'));
@@ -584,7 +588,9 @@ function connect(type, code) {
       assistantEnabled = event.assistant === true;
       document.body.classList.add('in-room');
       $('lobby').hidden = true;
+      $('chatWorkspace').hidden = false;
       $('room').hidden = false;
+      drawRecentRooms();
       changeWallpaper();
       if (!sameRoom) {
         for (const key of messages.keys()) removeMessage(key);
@@ -686,11 +692,13 @@ function resetRoom() {
   $('detailsToggle').setAttribute('aria-expanded', 'false');
   showOlder();
   room = id = token = peerMember = null;
+  drawRecentRooms();
   joined = false;
   updateCall(null);
   stopRecording(true);
   for (const key of messages.keys()) removeMessage(key);
   $('room').hidden = true;
+  $('chatWorkspace').hidden = true;
   $('lobby').hidden = false;
   drawRecentRooms();
   $('code').value = '';
@@ -1287,16 +1295,45 @@ function rememberRoom(code) {
 }
 
 function drawRecentRooms() {
-  const list = $('recentRoomList');
-  list.replaceChildren();
-  for (const code of readList('connect-recent-rooms')) {
-    if (typeof code !== 'string' || parseRoom(code) !== code || !roomToken(code)) continue;
-    const button = action('room', () => enterRoom('join', code));
-    button.append(element('span', code.slice(0, 6), 'room-code'));
-    list.append(button);
+  const filter = document.querySelector('.room-filter').value.trim().toLowerCase();
+  const codes = readList('connect-recent-rooms').filter(code => typeof code === 'string'
+    && parseRoom(code) === code && roomToken(code));
+  $('inboxEmpty').hidden = Boolean(codes.length);
+  for (const list of [$('recentRoomList'), $('workspaceRoomList')]) {
+    list.replaceChildren();
+    for (const code of codes.filter(code => code.toLowerCase().includes(filter))) {
+      const button = action('room', () => {
+        if (room === code) return;
+        if (room) {
+          send({type:'leave'});
+          resetRoom();
+        }
+        enterRoom('join', code);
+      });
+      if (code === room) button.setAttribute('aria-current', 'true');
+      button.append(element('span', code.slice(0, 8), 'room-code'));
+      list.append(button);
+    }
   }
-  $('recentRooms').hidden = !list.childElementCount;
 }
+
+for (const input of document.querySelectorAll('.room-filter')) {
+  input.addEventListener('input', () => {
+    for (const peer of document.querySelectorAll('.room-filter')) {
+      if (peer !== input) peer.value = input.value;
+    }
+    drawRecentRooms();
+  });
+}
+$('openInbox').onclick = () => $('leave').click();
+document.addEventListener('keydown', event => {
+  if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 'k') return;
+  event.preventDefault();
+  if (room) {
+    $('chatSettings').open = true;
+    $('search').focus();
+  } else document.querySelector('.room-filter').focus();
+});
 
 function roomToken(code) {
   return localStorage.getItem('connect:' + code) || sessionStorage.getItem('connect:' + code);

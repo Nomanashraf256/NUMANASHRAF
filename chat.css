@@ -161,3 +161,21 @@ body:not(.in-room) #lobby { text-align: start; padding: clamp(1rem, 4vw, 3rem) 0
   .lobby-layout { grid-template-columns: minmax(0, 1fr); }
   .lobby-photo { min-height: 11rem; }
 }
+
+.inbox-home { display: grid; grid-template-columns: minmax(0, 1fr) minmax(18rem, .75fr); gap: 1rem; }
+.inbox-card { min-width: 0; border: 1px solid var(--line); border-radius: 18px; padding: 1rem; background: var(--panel); color: var(--ink); }
+#lobby .inbox-card h1, .inbox-card h2 { font-size: 1.55rem; margin: 0 0 .8rem; }
+.room-filter { box-sizing: border-box; width: 100%; min-height: 44px; margin-block-end: .75rem; }
+#workspaceRoomList { display: grid; gap: .5rem; margin-block-end: .75rem; }
+#workspaceRoomList button { display: flex; justify-content: space-between; min-height: 44px; }
+#workspaceRoomList [aria-current="true"] { outline: 2px solid currentColor; outline-offset: -2px; }
+#chatWorkspace:not([hidden]) { display: grid; grid-template-columns: minmax(14rem, 20rem) minmax(0, 1fr); gap: .8rem; }
+.workspace-inbox { align-self: start; max-height: 75dvh; overflow: auto; }
+#room input, #room textarea, #room button { scroll-margin: .75rem; }
+#room #draft, #room .bubble { unicode-bidi: plaintext; }
+@media (max-width: 700px) {
+  .inbox-home { grid-template-columns: minmax(0, 1fr); }
+  #chatWorkspace:not([hidden]) { display: flex; flex: 1 1 0; min-height: 0; }
+  #chatWorkspace #room { min-width: 0; width: 100%; }
+  .workspace-inbox { display: none; }
+}

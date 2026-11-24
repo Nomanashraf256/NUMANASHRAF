@@ -29,14 +29,13 @@
 <input id="wallpaperFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden>
 </details>
 <section id="lobby">
-<div class="lobby-layout">
-<div class="lobby-intro">
-<h1 data-t="title">
-</h1>
-<p data-t="intro">
-</p>
-<div class="lobby-photo" role="img" data-t-label="cityPhoto" aria-label="Istanbul waterfront"></div>
-</div>
+<div class="inbox-home">
+<section class="inbox-card" aria-labelledby="recentTitle">
+<h1 id="recentTitle" data-t="inbox"></h1>
+<input type="search" class="room-filter" data-t-label="findRooms">
+<div id="recentRoomList"></div>
+<p id="inboxEmpty" data-t="inboxEmpty"></p>
+</section>
 <div class="lobby-access">
 <div class="entry">
 <h2 data-t="roomAccess"></h2>
@@ -54,13 +53,16 @@
 </div>
 </form>
 </div>
-<section id="recentRooms" hidden aria-labelledby="recentTitle">
-<h2 id="recentTitle" data-t="recentRooms"></h2>
-<div id="recentRoomList"></div>
-</section>
 </div>
 </div>
 </section>
+<div id="chatWorkspace" hidden>
+<aside class="inbox-card workspace-inbox">
+<h2 data-t="inbox"></h2>
+<input type="search" class="room-filter" data-t-label="findRooms">
+<div id="workspaceRoomList"></div>
+<button id="openInbox" type="button" data-t="roomAccess"></button>
+</aside>
 <section id="room" hidden>
 <header class="room-head chat-header">
 <div class="room-identity">
@@ -76,7 +78,7 @@
 <button id="detailsToggle" type="button" data-t="roomDetails" aria-controls="roomDetails" aria-expanded="false"></button>
 <button id="copy" data-t="copy">
 </button>
-<button id="leave" data-t="leave">
+<button id="leave" data-t="inbox">
 </button>
 <button id="call" class="primary" data-t="call">
 </button>
@@ -188,6 +190,7 @@
 </form>
 </div>
 </section>
+</div>
 <p id="notice" role="status">
 </p>
 </main>
