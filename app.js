@@ -19,7 +19,7 @@ const strings = {
     qualityWeak: "Audio unstable",
     audioReady: "Audio connected",
 
-    openConversation:'View in conversation', displayName:'Display name', roomDetails:'Room details', notifications:'Notifications',
+    openConversation:'View in conversation', displayName:'Display name', linkSharing:'Allow new guests with the room link', privateHistory:'Only existing participants can open this room.', roomDetails:'Room details', notifications:'Notifications',
     allMessages:'All messages', mentionsOnly:'Mentions only', mutedRoom:'Mute', mediaFiles:'Media and files',
     pinnedMessages:'Pinned messages', participants:'Participants', olderMessages:'Older messages', latestMessages:'Jump to latest',
     removed:'You were removed from this room.', edited:'Edited', forwarded:'Forwarded', deleted:'Message deleted',
@@ -76,7 +76,7 @@ const strings = {
 
     title:'Farklı dillerde sohbet edin.', intro:'İngilizce ve Türkçe mesajlar, sesli notlar ve canlı aramalar için özel bir oda.',
     create:'Özel oda oluştur', inviteLabel:'Davetiniz var mı?', join:'Odaya katıl', code:'Oda kodu veya davet bağlantısı',
-    openConversation:'Konuşmada göster', displayName:'Görünen ad', roomDetails:'Oda ayrıntıları', notifications:'Bildirimler',
+    openConversation:'Konuşmada göster', displayName:'Görünen ad', linkSharing:'Bağlantıyla yeni misafirlerin katılmasına izin ver', privateHistory:'Bu odayı yalnızca mevcut katılımcılar açabilir.', roomDetails:'Oda ayrıntıları', notifications:'Bildirimler',
     allMessages:'Tüm mesajlar', mentionsOnly:'Yalnızca bahsetmeler', mutedRoom:'Sessiz', mediaFiles:'Medya ve dosyalar',
     pinnedMessages:'Sabitlenen mesajlar', participants:'Katılımcılar', olderMessages:'Eski mesajlar', latestMessages:'Son mesajlara git',
     removed:'Odadan çıkarıldınız.', edited:'Düzenlendi', forwarded:'İletildi', deleted:'Mesaj silindi',
@@ -541,7 +541,10 @@ function connect(type, code) {
   clearTimeout(reconnectTimer);
   joined = false;
   const old = ws;
-  const connection = new WebSocket(new URL('/ws', location.href.replace(/^http/, 'ws')));
+  const endpoint = new URL('/ws', location.href.replace(/^http/, 'ws'));
+  if (type === 'create') endpoint.searchParams.set('create', '1');
+  else endpoint.searchParams.set('room', code);
+  const connection = new WebSocket(endpoint);
   ws = connection;
   old?.close();
   $('create').disabled = true;
@@ -558,6 +561,8 @@ function connect(type, code) {
     if (event.type === 'room') {
       const sameRoom = room === event.code;
       ({code:room, id, token, ice, lang:language, role:roomRole} = event);
+      $('sharingControl').hidden = roomRole !== 'owner' || typeof event.shared !== 'boolean';
+      showSharing(event.shared ?? true);
       localStorage.setItem('connect:' + room, token);
       localStorage.setItem('connect-name', event.name);
       notificationMode = localStorage.getItem('connect-notifications:' + room) || 'all';
@@ -606,6 +611,7 @@ function connect(type, code) {
         }
       }
     } else if (event.type === 'typing') showTyping(event.active, event.id, event.name);
+    else if (event.type === 'sharing') showSharing(event.enabled);
     else if (event.type === 'role') { roomRole = event.role; drawMessages(); }
     else if (event.type === 'reported' || event.type === 'forwarded') notice(event.type);
     else if (event.type === 'participantsChanged' && !$('roomDetails').hidden && detailMode === 'participants') showParticipants();
@@ -1428,6 +1434,15 @@ async function jumpToMessage(seq) {
   } catch { notice('loadError'); }
 }
 
+function showSharing(enabled) {
+  $('linkSharing').checked = enabled;
+  $('sharingNotice').textContent = t(enabled ? 'footer' : 'privateHistory');
+}
+$('linkSharing').onchange = event => {
+  const enabled = event.target.checked;
+  event.target.checked = !enabled;
+  if (!send({type:'sharing',enabled})) notice('disconnected');
+};
 $('detailsToggle').onclick = () => {
   const panel = $('roomDetails');
   panel.hidden = !panel.hidden;
