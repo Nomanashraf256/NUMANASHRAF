@@ -6,3 +6,5 @@ for (const name of ['index.html','notifications.js','app.js','style.css','chat.c
   const directory = ['index.html','notifications.js'].includes(name) ? '' : 'assets/';
   await copyFile(new URL(name, root), new URL(directory + name, output));
 }
+
+await copyFile(new URL('./lobby.webp', import.meta.url), new URL('assets/lobby.webp', output));

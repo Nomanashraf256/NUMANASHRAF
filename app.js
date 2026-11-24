@@ -19,7 +19,7 @@ const strings = {
     qualityWeak: "Audio unstable",
     audioReady: "Audio connected",
 
-    openConversation:'View in conversation', recentRooms:'Recent rooms', displayName:'Display name', linkSharing:'Allow new guests with the room link', privateHistory:'Only existing participants can open this room.', roomDetails:'Room details', notifications:'Notifications',
+    openConversation:'View in conversation', recentRooms:'Recent rooms', roomAccess:'Start or join a room', cityPhoto:'Istanbul waterfront', displayName:'Display name', linkSharing:'Allow new guests with the room link', privateHistory:'Only existing participants can open this room.', roomDetails:'Room details', notifications:'Notifications',
     allMessages:'All messages', mentionsOnly:'Mentions only', mutedRoom:'Mute', mediaFiles:'Media and files',
     pinnedMessages:'Pinned messages', participants:'Participants', olderMessages:'Older messages', latestMessages:'Jump to latest',
     removed:'You were removed from this room.', edited:'Edited', forwarded:'Forwarded', deleted:'Message deleted',
@@ -29,7 +29,7 @@ const strings = {
     promote:'Make moderator', demote:'Remove moderator role', removeParticipant:'Remove participant',
     resolve:'Resolve report', more:'Load more', owner:'Owner', moderator:'Moderator', guest:'Guest',
     mentions:'Mention someone', enterName:'Enter a display name to join.', loadError:'Could not load room data.',
-    title:'Talk across languages.', intro:'A shareable room for translated messages, voice notes and English–Turkish calls.',
+    title:'A place to talk across languages.', intro:'Chat in English or Turkish. Share a room link to exchange translated messages, voice notes and files.',
     create:'Create a room', inviteLabel:'Have an invite?', join:'Join room', code:'Room code or invite link',
     room:'Chat room', copy:'Copy invite', copied:'Invite copied.', leave:'Leave', call:'Call', accept:'Accept', decline:'Decline',
     end:'End call', mute:'Mute', unmute:'Unmute', record:'🎙 Record', stop:'■ Stop recording', send:'Send',
@@ -76,7 +76,7 @@ const strings = {
 
     title:'Farklı dillerde sohbet edin.', intro:'İngilizce ve Türkçe mesajlar, sesli notlar ve canlı aramalar için özel bir oda.',
     create:'Özel oda oluştur', inviteLabel:'Davetiniz var mı?', join:'Odaya katıl', code:'Oda kodu veya davet bağlantısı',
-    openConversation:'Konuşmada göster', recentRooms:'Son odalar', displayName:'Görünen ad', linkSharing:'Bağlantıyla yeni misafirlerin katılmasına izin ver', privateHistory:'Bu odayı yalnızca mevcut katılımcılar açabilir.', roomDetails:'Oda ayrıntıları', notifications:'Bildirimler',
+    openConversation:'Konuşmada göster', recentRooms:'Son odalar', roomAccess:'Oda oluştur veya katıl', cityPhoto:'İstanbul sahili', displayName:'Görünen ad', linkSharing:'Bağlantıyla yeni misafirlerin katılmasına izin ver', privateHistory:'Bu odayı yalnızca mevcut katılımcılar açabilir.', roomDetails:'Oda ayrıntıları', notifications:'Bildirimler',
     allMessages:'Tüm mesajlar', mentionsOnly:'Yalnızca bahsetmeler', mutedRoom:'Sessiz', mediaFiles:'Medya ve dosyalar',
     pinnedMessages:'Sabitlenen mesajlar', participants:'Katılımcılar', olderMessages:'Eski mesajlar', latestMessages:'Son mesajlara git',
     removed:'Odadan çıkarıldınız.', edited:'Düzenlendi', forwarded:'İletildi', deleted:'Mesaj silindi',
@@ -305,6 +305,7 @@ function labelUI() {
   document.documentElement.lang = language;
   $('locale').value = language;
   document.querySelectorAll('[data-t]').forEach(el => { el.textContent = t(el.dataset.t); });
+  document.querySelectorAll('[data-t-label]').forEach(el => el.setAttribute('aria-label', t(el.dataset.tLabel)));
   $('code').placeholder = t('code');
   $('draft').placeholder = t('draft');
   $('draft').setAttribute('aria-label', t('messageLabel'));

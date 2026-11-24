@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>English–Turkish Connect</title>
+<title>Learn Connect · English and Turkish chat</title>
+<meta name="description" content="Create a room and chat across English and Turkish with Learn Connect.">
 <link rel="stylesheet" href="/assets/style.css">
 <link rel="stylesheet" href="/assets/chat.css">
 <script type="module" src="/assets/app.js">
@@ -12,7 +13,7 @@
 <body>
 <header class="top">
 <b>
-<span class="mark">↔</span> English–Turkish Connect</b>
+<span class="mark">↔</span> Learn Connect</b>
 <select id="locale" aria-label="Language">
 <option value="en">I speak English</option>
 <option value="tr">Türkçe konuşuyorum</option>
@@ -28,12 +29,17 @@
 <input id="wallpaperFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden>
 </details>
 <section id="lobby">
-<span class="mark hero">↔</span>
+<div class="lobby-layout">
+<div class="lobby-intro">
 <h1 data-t="title">
 </h1>
 <p data-t="intro">
 </p>
+<div class="lobby-photo" role="img" data-t-label="cityPhoto" aria-label="Istanbul waterfront"></div>
+</div>
+<div class="lobby-access">
 <div class="entry">
+<h2 data-t="roomAccess"></h2>
 <label for="displayName" data-t="displayName"></label>
 <input id="displayName" maxlength="40" autocomplete="nickname">
 <button class="primary" id="create" data-t="create">
@@ -52,6 +58,8 @@
 <h2 id="recentTitle" data-t="recentRooms"></h2>
 <div id="recentRoomList"></div>
 </section>
+</div>
+</div>
 </section>
 <section id="room" hidden>
 <header class="room-head chat-header">

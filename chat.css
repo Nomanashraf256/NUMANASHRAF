@@ -119,3 +119,45 @@
   #room .chat-header > .row { flex-wrap: wrap; }
   #room .chat-header button { min-height: 40px; }
 }
+
+body:not(.in-room) main { width: min(1120px, 100%); }
+body:not(.in-room) #lobby { text-align: start; padding: clamp(1rem, 4vw, 3rem) 0; }
+.lobby-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(18rem, .85fr);
+  gap: clamp(1.5rem, 5vw, 4.5rem);
+  align-items: start;
+}
+#lobby .lobby-intro h1 {
+  font-size: clamp(2.55rem, 6vw, 5rem);
+  line-height: 1.02;
+  letter-spacing: -.065em;
+  max-width: 13ch;
+  margin: 0 0 1rem;
+}
+#lobby .lobby-intro p { font-size: 1.1rem; line-height: 1.6; margin: 0 0 1.5rem; }
+.lobby-photo {
+  min-height: clamp(12rem, 27vw, 22rem);
+  border-radius: 22px;
+  background: #103c46 url('/assets/lobby.webp') center 52% / cover no-repeat;
+}
+#lobby .entry {
+  margin: 0;
+  padding: clamp(1.1rem, 3vw, 1.8rem);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  display: grid;
+  gap: .8rem;
+  box-shadow: 0 12px 30px #10203014;
+}
+#lobby .entry h2, #recentRooms h2 { font-size: 1.15rem; margin: 0 0 .4rem; }
+#lobby .entry input { min-width: 0; width: 100%; min-height: 44px; }
+#lobby .entry button { min-height: 44px; }
+#lobby #join { padding-top: .75rem; border-top: 1px solid var(--line); }
+#lobby #join .row { margin-top: .5rem; }
+#room .composer { border-top: 1px solid var(--line); background: var(--panel); }
+#room #messages { scrollbar-gutter: stable; }
+@media (max-width: 700px) {
+  .lobby-layout { grid-template-columns: minmax(0, 1fr); }
+  .lobby-photo { min-height: 11rem; }
+}
