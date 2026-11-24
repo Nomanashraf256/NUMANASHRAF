@@ -48,14 +48,21 @@
 </div>
 </form>
 </div>
+<section id="recentRooms" hidden aria-labelledby="recentTitle">
+<h2 id="recentTitle" data-t="recentRooms"></h2>
+<div id="recentRoomList"></div>
+</section>
 </section>
 <section id="room" hidden>
-<header class="room-head">
+<header class="room-head chat-header">
+<div class="room-identity">
+<span class="room-avatar" aria-hidden="true">LC</span>
 <div>
 <h2 data-t="room">
 </h2>
 <p id="presence">
 </p>
+</div>
 </div>
 <div class="row">
 <button id="detailsToggle" type="button" data-t="roomDetails" aria-controls="roomDetails" aria-expanded="false"></button>

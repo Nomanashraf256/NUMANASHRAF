@@ -19,7 +19,7 @@ const strings = {
     qualityWeak: "Audio unstable",
     audioReady: "Audio connected",
 
-    openConversation:'View in conversation', displayName:'Display name', linkSharing:'Allow new guests with the room link', privateHistory:'Only existing participants can open this room.', roomDetails:'Room details', notifications:'Notifications',
+    openConversation:'View in conversation', recentRooms:'Recent rooms', displayName:'Display name', linkSharing:'Allow new guests with the room link', privateHistory:'Only existing participants can open this room.', roomDetails:'Room details', notifications:'Notifications',
     allMessages:'All messages', mentionsOnly:'Mentions only', mutedRoom:'Mute', mediaFiles:'Media and files',
     pinnedMessages:'Pinned messages', participants:'Participants', olderMessages:'Older messages', latestMessages:'Jump to latest',
     removed:'You were removed from this room.', edited:'Edited', forwarded:'Forwarded', deleted:'Message deleted',
@@ -76,7 +76,7 @@ const strings = {
 
     title:'Farklı dillerde sohbet edin.', intro:'İngilizce ve Türkçe mesajlar, sesli notlar ve canlı aramalar için özel bir oda.',
     create:'Özel oda oluştur', inviteLabel:'Davetiniz var mı?', join:'Odaya katıl', code:'Oda kodu veya davet bağlantısı',
-    openConversation:'Konuşmada göster', displayName:'Görünen ad', linkSharing:'Bağlantıyla yeni misafirlerin katılmasına izin ver', privateHistory:'Bu odayı yalnızca mevcut katılımcılar açabilir.', roomDetails:'Oda ayrıntıları', notifications:'Bildirimler',
+    openConversation:'Konuşmada göster', recentRooms:'Son odalar', displayName:'Görünen ad', linkSharing:'Bağlantıyla yeni misafirlerin katılmasına izin ver', privateHistory:'Bu odayı yalnızca mevcut katılımcılar açabilir.', roomDetails:'Oda ayrıntıları', notifications:'Bildirimler',
     allMessages:'Tüm mesajlar', mentionsOnly:'Yalnızca bahsetmeler', mutedRoom:'Sessiz', mediaFiles:'Medya ve dosyalar',
     pinnedMessages:'Sabitlenen mesajlar', participants:'Katılımcılar', olderMessages:'Eski mesajlar', latestMessages:'Son mesajlara git',
     removed:'Odadan çıkarıldınız.', edited:'Düzenlendi', forwarded:'İletildi', deleted:'Mesaj silindi',
@@ -238,6 +238,11 @@ window.visualViewport?.addEventListener('resize', layoutComposer);
 window.visualViewport?.addEventListener('scroll', layoutComposer);
 
 function updateDraft(announce = true) {
+  if (room) {
+    const key = 'connect-draft:' + room;
+    if ($('draft').value) localStorage.setItem(key, $('draft').value);
+    else localStorage.removeItem(key);
+  }
   resizeComposer();
   const ref = ++previewRef;
   clearTimeout(draftTimer);
@@ -568,6 +573,8 @@ function connect(type, code) {
       $('sharingControl').hidden = roomRole !== 'owner' || typeof event.shared !== 'boolean';
       showSharing(event.shared ?? true);
       localStorage.setItem('connect:' + room, token);
+      if (!sameRoom) $('draft').value = localStorage.getItem('connect-draft:' + room) || '';
+      rememberRoom(room);
       localStorage.setItem('connect-name', event.name);
       notificationMode = localStorage.getItem('connect-notifications:' + room) || 'all';
       $('notifications').value = notificationMode;
@@ -684,6 +691,7 @@ function resetRoom() {
   for (const key of messages.keys()) removeMessage(key);
   $('room').hidden = true;
   $('lobby').hidden = false;
+  drawRecentRooms();
   $('code').value = '';
   $('draft').value = '';
   $('search').value = '';
@@ -1272,6 +1280,23 @@ function isStaff() {
 function parseRoom(value) {
   return value.trim().match(/(?:^|#room=)([A-Za-z0-9_-]{24})$/)?.[1];
 }
+function rememberRoom(code) {
+  const recent = readList('connect-recent-rooms').filter(item => item !== code);
+  localStorage.setItem('connect-recent-rooms', JSON.stringify([code, ...recent].slice(0, 15)));
+}
+
+function drawRecentRooms() {
+  const list = $('recentRoomList');
+  list.replaceChildren();
+  for (const code of readList('connect-recent-rooms')) {
+    if (typeof code !== 'string' || parseRoom(code) !== code || !roomToken(code)) continue;
+    const button = action('room', () => enterRoom('join', code));
+    button.append(element('span', code.slice(0, 6), 'room-code'));
+    list.append(button);
+  }
+  $('recentRooms').hidden = !list.childElementCount;
+}
+
 function roomToken(code) {
   return localStorage.getItem('connect:' + code) || sessionStorage.getItem('connect:' + code);
 }
@@ -1740,6 +1765,12 @@ setInterval(async () => {
     }
   } catch { /* Connection closed during sampling. */ }
 }, 3000);
+$('draft').addEventListener('keydown', event => {
+  if (event.key === 'Enter' && (event.ctrlKey || event.metaKey) && !event.isComposing) {
+    event.preventDefault();
+    $('compose').requestSubmit();
+  }
+});
 $('compose').onsubmit = async event => {
   event.preventDefault();
   if ($('send').disabled) return;
@@ -1806,6 +1837,7 @@ $('capture').onchange = () => {
 window.addEventListener('pagehide', () => { ws?.close(); callMic?.getTracks().forEach(track => track.stop()); });
   $('displayName').value = localStorage.getItem('connect-name') || '';
 labelUI();
+drawRecentRooms();
 const invite = location.hash.match(/^#room=([A-Za-z0-9_-]{24})$/)?.[1];
 if (invite) {
   $('code').value = invite;

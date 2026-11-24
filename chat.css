@@ -70,3 +70,52 @@
 @media (max-width: 600px) {
   body.typing-focus #roomDetails { display: none; }
 }
+
+#room .chat-header {
+  gap: .75rem;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+}
+.room-identity {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: .75rem;
+}
+.room-avatar {
+  display: grid;
+  place-items: center;
+  flex: 0 0 2.5rem;
+  height: 2.5rem;
+  border-radius: 14px;
+  background: #103c46;
+  color: #d8fff4;
+  font-weight: 700;
+  letter-spacing: .05em;
+}
+.room-identity h2 { margin: 0; }
+.room-identity p { margin: .15rem 0 0; }
+#room .bubble {
+  width: fit-content;
+  max-width: min(86%, 44rem);
+  border: 1px solid var(--line);
+  border-radius: 5px 16px 16px;
+  overflow-wrap: anywhere;
+}
+#room .bubble.mine { border-radius: 16px 5px 16px 16px; }
+#room .bubble blockquote {
+  border-inline-start: 3px solid currentColor;
+  margin-inline: 0;
+  padding-inline: .65rem;
+}
+#compose #send { min-height: 44px; border-radius: 14px; }
+#roomDetails button, #typingControls { min-height: 40px; }
+#recentRooms { margin-block-start: 1.5rem; text-align: start; }
+#recentRoomList { display: grid; gap: .5rem; }
+#recentRoomList button { display: flex; justify-content: space-between; min-height: 44px; }
+.room-code { font-family: monospace; opacity: .75; }
+@media (max-width: 600px) {
+  #room .chat-header { flex-wrap: wrap; }
+  #room .chat-header > .row { flex-wrap: wrap; }
+  #room .chat-header button { min-height: 40px; }
+}
