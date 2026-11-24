@@ -1,0 +1,12 @@
+{
+  "name": "learn-connect-chat",
+  "private": true,
+  "scripts": {
+    "build": "node cloudflare/build.mjs",
+    "check": "node --check app.js && node --check cloudflare/worker.mjs && npm run build",
+    "deploy:cloudflare": "npm run build && wrangler deploy --config cloudflare/wrangler.jsonc"
+  },
+  "devDependencies": {
+    "wrangler": "4.167.0"
+  }
+}

@@ -512,6 +512,8 @@ function storeMessage(message) {
     }
     if (pc?.connectionState === 'connected') reflectCapture();
   } else {
+    const current = messages.get(message.key);
+    if (current?.revision > message.revision) return;
     if (message.deleted && originals.has(message.key)) {
       URL.revokeObjectURL(originals.get(message.key));
       originals.delete(message.key);
@@ -1383,7 +1385,7 @@ async function recoverHistory(after, more, connection, version) {
       changesCursor = changes.version;
       moreChanges = changes.more;
     }
-    if (ws === connection && online()) historyVersion = version;
+    if (ws === connection && online()) historyVersion = Math.max(historyVersion, version);
     sendReceipt();
   } catch { if (ws === connection) connection.close(); }
 }

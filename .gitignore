@@ -5,3 +5,5 @@ __pycache__/
 
 cloudflare/public/
 cloudflare/.wrangler/
+
+node_modules/
