@@ -29,6 +29,7 @@ def run(args):
             page.goto(args.url)
             pages.append(page)
         a, b = pages
+        a.locator("#displayName").fill("Creator")
         a.locator("#create").click()
         expect(a.locator("#room")).to_be_visible()
         a.locator("#copy").click()
@@ -37,14 +38,31 @@ def run(args):
         assert invite == a.url
         b.goto(invite)
         b.locator("#locale").select_option("tr")
+        b.locator("#displayName").fill("Guest")
         b.locator("#join button").click()
-        expect(a.locator("#presence")).to_have_text("Other person connected")
+        expect(a.locator("#presence")).to_contain_text("2 ·")
         expect(b.locator("html")).to_have_attribute("lang", "tr")
         third = browsers[0].new_context().new_page()
         third.goto(invite)
+        third.locator("#displayName").fill("Third guest")
         third.locator("#join button").click()
-        expect(third.locator("#notice")).to_have_text("This room already has two participants.")
-        print("Room, invite clipboard, guest, two-person limit and localization", flush=True)
+        expect(a.locator("#presence")).to_contain_text("3 ·")
+        third.locator("#leave").click()
+        expect(a.locator("#presence")).to_contain_text("2 ·")
+        third.close()
+        print("Room, invite clipboard, three participants, and localization", flush=True)
+
+        draft = a.locator("#draft")
+        draft.fill("First line\nSecond line\nThird line\nFourth line")
+        expect(a.locator("#typingControls")).to_have_text("Show controls")
+        a.set_viewport_size({"width": 390, "height": 360})
+        expect(a.locator("#send")).to_be_in_viewport()
+        a.locator("#typingControls").click()
+        expect(draft).to_have_value("First line\nSecond line\nThird line\nFourth line")
+        expect(a.locator("#typingControls")).to_have_text("Return to typing")
+        draft.fill("")
+        draft.blur()
+        a.set_viewport_size({"width": 390, "height": 844})
 
         for sender, receiver, text, expected in [
             (a, b, "Can you hear me?", "duy"),
@@ -54,13 +72,13 @@ def run(args):
             sender.locator("#send").click()
             window = receiver.locator("#messages article").last
             expect(window).to_contain_text(expected, ignore_case=True, timeout=20000)
-            window.locator("summary").click()
-            expect(window.locator("details")).to_contain_text(text)
+            expect(window).to_contain_text(text)
             print("Text:", window.inner_text().replace("\n", " | "), flush=True)
 
         denied = browsers[0].new_context().new_page()
         # A separate room avoids interrupting the bilingual test room.
         denied.goto(args.url)
+        denied.locator("#displayName").fill("Browser test")
         denied.locator("#create").click()
         expect(denied.locator("#room")).to_be_visible()
         permissions = denied.context.new_cdp_session(denied)
@@ -79,13 +97,12 @@ def run(args):
             sender.wait_for_timeout(3800)
             sender.locator("#mic").click()
             window = receiver.locator("#messages article").last
+            expect(window).to_contain_text(expected, ignore_case=True, timeout=30000)
+            window.get_by_role("button", name="Open attachment" if receiver is a else "Eki aç").click()
             expect(window.locator("audio")).to_have_count(1, timeout=30000)
-            expect(window.get_by_role("button")).to_be_visible(timeout=30000)
-            expect(window).to_contain_text(expected, ignore_case=True)
-            window.locator("summary").click()
             assert window.locator("audio").evaluate("async el => { await el.play(); return !el.paused }")
             window.locator("audio").evaluate("el => el.pause()")
-            window.get_by_role("button").click()
+            window.get_by_role("button", name="Play translation" if receiver is a else "Çeviriyi dinle").click()
             receiver.wait_for_function("played.length >= 1 && played.every(n => n > 0)", timeout=20000)
             print("Voice:", window.inner_text().replace("\n", " | "), flush=True)
 
@@ -125,17 +142,17 @@ def run(args):
         print("Mute, three audio modes and manual push-to-talk", flush=True)
 
         a.context.set_offline(True)
-        expect(b.locator("#presence")).to_contain_text("kesildi", timeout=24000)
+        expect(b.locator("#presence")).to_contain_text("1 ·", timeout=24000)
         a.context.set_offline(False)
-        expect(a.locator("#presence")).to_have_text("Other person connected", timeout=25000)
-        expect(b.locator("#presence")).to_contain_text("bağlandı", timeout=25000)
+        expect(a.locator("#presence")).to_contain_text("2 ·", timeout=25000)
+        expect(b.locator("#presence")).to_contain_text("2 ·", timeout=25000)
         for page in pages:
             page.wait_for_function("document.querySelector('#peerAudio').srcObject?.getAudioTracks().length === 1", timeout=25000)
         expect(a.locator("#callNotice")).to_have_text("", timeout=25000)
         a.locator("#end").click()
         expect(b.locator("#callPanel")).to_be_hidden()
         b.locator("#leave").click()
-        expect(a.locator("#presence")).to_contain_text("Waiting")
+        expect(a.locator("#presence")).to_contain_text("1 ·")
         print("Call reconnection, end and leave", flush=True)
 
 
